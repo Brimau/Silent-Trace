@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>SILENT TRACE</title>
+<link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+
+<canvas id="lienzo"></canvas>
+
+<div id="neblina"></div>
+<div id="sangria"></div>
+
+<div id="hud" class="oculto">
+  <div id="hud-arriba">
+    <div id="objetivo"></div>
+    <div id="zona"></div>
+  </div>
+  <div id="hud-centro">
+    <div id="mira"></div>
+    <div id="prompt" class="oculto"><span id="prompt-tecla">E</span><span id="prompt-texto"></span></div>
+  </div>
+  <div id="velocimetro" class="oculto">
+    <span id="velocidad">0</span><span id="unidad">km/h</span>
+  </div>
+  <div id="consejo"></div>
+  <div id="brindis"></div>
+</div>
+
+  <div id="inicio">
+    <div id="inicio-ambiente"></div>
+    <div id="inicio-caja">
+      <p id="carga">Cargando el bosque…</p>
+      <h1 id="titulo">SILENT TRACE</h1>
+      <p id="lema">Una investigación que nunca debió comenzar.</p>
+      <div id="inicio-acciones">
+        <button id="comenzar" disabled>COMENZAR</button>
+        <button id="alternar-controles" type="button">CONTROLES</button>
+      </div>
+      <ul id="pistas" class="oculto">
+        <li><b>W A S D</b> conducir / caminar</li>
+        <li><b>Ratón</b> mirar</li>
+        <li><b>Mayús</b> correr</li>
+        <li><b>E</b> interactuar · entrar y salir del coche</li>
+        <li><b>R</b> herramienta · <b>G</b> fotografía · <b>Tab</b> libreta</li>
+        <li><b>L</b> faros · <b>F</b> linterna · <b>Espacio</b> freno</li>
+        <li><b>Esc</b> liberar el cursor</li>
+      </ul>
+    </div>
+  </div>
+
+
+<noscript>
+  <p style="color:#b9bdb9;font:14px ui-monospace,monospace;position:fixed;inset:0;display:grid;place-items:center">
+    Este juego necesita JavaScript.
+  </p>
+</noscript>
+
+<script src="js/vendor/three.global.js"></script>
+<script src="js/datos/config.js"></script>
+<script src="js/datos/mapa.js"></script>
+<script src="js/nucleo/ruido.js"></script>
+<script src="js/nucleo/geometria.js"></script>
+<script src="js/nucleo/entrada.js"></script>
+<script src="js/nucleo/colisiones.js"></script>
+<script src="js/nucleo/postproceso.js"></script>
+<script src="js/nucleo/motor.js"></script>
+<script src="js/nucleo/bucle.js"></script>
+<script src="js/mundo/texturas.js"></script>
+<script src="js/mundo/caminos.js"></script>
+<script src="js/mundo/terreno.js"></script>
+<script src="js/mundo/cielo.js"></script>
+<script src="js/mundo/carretera.js"></script>
+<script src="js/mundo/bosque.js"></script>
+<script src="js/mundo/props.js"></script>
+<script src="js/mundo/pueblo.js"></script>
+<script src="js/mundo/hospital.js"></script>
+<script src="js/mundo/hitos.js"></script>
+<script src="js/jugador/linterna.js"></script>
+<script src="js/jugador/jugador.js"></script>
+<script src="js/jugador/interaccion.js"></script>
+<script src="js/vehiculos/vehiculo.js"></script>
+<script src="js/sistemas/audio.js"></script>
+<script src="js/sistemas/progresion.js"></script>
+<script src="js/sistemas/herramientas.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
