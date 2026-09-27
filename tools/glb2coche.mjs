@@ -3,11 +3,26 @@
 // - Conserva las piezas con nombre por separado (ruedas, volante, faros...)
 // - Emite un pivote por pieza para poder animarlas
 // - Escribe un .js con base64 porque file:// no permite fetch
+//
+//   node tools/glb2coche.mjs <modelo.glb> [carpeta-destino]
+//
+// El .glb es una entrada, no una dependencia del juego: el runtime solo
+// carga assets/coche.js. Por eso el binario no se versiona.
 import fs from 'node:fs';
 import path from 'node:path';
 
-const entrada = process.argv[2];
+const POR_DEFECTO = 'murphy_92_-_low_poly_model.glb';
+const entrada = process.argv[2] || POR_DEFECTO;
 const destino = process.argv[3] || 'assets';
+
+if (!fs.existsSync(entrada)) {
+  console.error(`No encuentro el modelo: ${entrada}`);
+  console.error('');
+  console.error('El .glb no se versiona en el repositorio. Descargalo de nuevo y');
+  console.error('vuelvelo a poner en la raiz del proyecto, o indica la ruta:');
+  console.error(`  node tools/glb2coche.mjs ruta/al/modelo.glb`);
+  process.exit(1);
+}
 
 const buf = fs.readFileSync(entrada);
 if (buf.readUInt32LE(0) !== 0x46546c67) throw new Error('no es un GLB');
