@@ -49,6 +49,7 @@
   let hitos = null;
   let cielo = null;
   let caminos = null;
+  let carretera = null;
   let terreno = null;
   let bosque = null;
   let listo = false;
@@ -139,7 +140,7 @@
       caminos = J.crearCaminos();
       terreno = J.crearTerreno(caminos);
       escena.add(terreno.malla);
-      J.crearCarretera(escena, caminos, terreno);
+      carretera = J.crearCarretera(escena, caminos, terreno);
 
       await paso('Plantando el bosque…');
       bosque = J.crearBosque(escena, caminos, terreno, { hierba: motor.calidades.hierba });
@@ -553,6 +554,7 @@
     }
 
     linterna.actualizar(dt, camara, enCoche ? vehiculo : null);
+    if (carretera) carretera.actualizar(camara.position, dt);
 
     cuaderno.reloj = tiempoJuego;
     herramientas.actualizar(dt, {

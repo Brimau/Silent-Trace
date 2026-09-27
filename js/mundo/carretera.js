@@ -154,14 +154,68 @@
       return (n << 16) | (n << 8) | n;
     }
 
+    // altura del asfalto segun el peralte: la calzada sube 7 cm en el eje y
+    // cae hacia los bordes. Marcas y charcos tienen que seguirla o flotan
+    // sobre el arcén y se hunden en el centro de la calzada.
+    function peralte(medio, d) {
+      const t = Math.min(1, Math.abs(d) / medio);
+      return 0.07 * (1 - t * t);
+    }
+
+    // troceado por distancia: cada bloque se enciende y apaga con
+    // histresis para que no parpadee al cruzar el umbral
+    const TROCE = 90;
+    const LECTURA = 240;
+    const APAGADO = 300;
+    const bloques = [];
+
+    function crearBloques(items, material) {
+      const mapa = new Map();
+      for (const it of items) {
+        const id = Math.floor(it.s / TROCE);
+        if (!mapa.has(id)) mapa.set(id, []);
+        mapa.get(id).push(it);
+      }
+      const contenedor = new THREE.Group();
+      mapa.forEach(function (lista) {
+        const partes = lista.map(function (it) {
+          return { geometria: it.geometria, matriz: it.matriz, color: it.color };
+        });
+        const malla = new THREE.Mesh(fusionar(partes), material);
+        malla.receiveShadow = true;
+        let cx = 0; let cz = 0;
+        for (const it of lista) { cx += it.x; cz += it.z; }
+        malla.userData = { x: cx / lista.length, z: cz / lista.length };
+        malla.visible = false;
+        bloques.push(malla);
+        contenedor.add(malla);
+      });
+      return contenedor;
+    }
+
+    let relojLod = 0;
+    function actualizarDetalle(pos, dt) {
+      relojLod -= dt;
+      if (relojLod > 0) return;
+      relojLod = 0.2;
+      for (const b of bloques) {
+        const dx = b.userData.x - pos.x;
+        const dz = b.userData.z - pos.z;
+        const d2 = dx * dx + dz * dz;
+        if (b.visible) {
+          if (d2 > APAGADO * APAGADO) b.visible = false;
+        } else if (d2 < LECTURA * LECTURA) b.visible = true;
+      }
+    }
+
     function marcas() {
-      const partes = [];
       const rnd = crearPRNG(CONFIG.semilla + 4242);
       const geoCentro = new THREE.PlaneGeometry(1, 1);
       geoCentro.rotateX(-Math.PI / 2);
       const geoBorde = new THREE.PlaneGeometry(1, 1);
       geoBorde.rotateX(-Math.PI / 2);
       const camino = caminos.porId.carretera;
+      const items = [];
 
       function tramo(ini, fin, d, anchoLinea, geo) {
         const pasos = Math.max(1, Math.round((fin - ini) / 4));
@@ -174,13 +228,12 @@
           if (largo < 0.2) continue;
           const x = (a.x + b.x) / 2 + a.px * d;
           const z = (a.z + b.z) / 2 + a.pz * d;
-          const y = (a.y + b.y) / 2 + 0.075;
+          const y = (a.y + b.y) / 2 + peralte(camino.medio, d) + 0.012;
           const borde = Math.min(1, Math.max(0, Math.min(s0, camino.longitud - s0) / 40));
           const g = (0.46 + rnd() * 0.46) * (0.5 + borde * 0.5);
-          partes.push({
-            geometria: geo,
+          items.push({
+            s: (s0 + s1) / 2, x: x, z: z, geometria: geo, color: gris(g),
             matriz: matriz(x, y, z, 0, Math.atan2(b.x - a.x, b.z - a.z), 0, anchoLinea, 1, largo + 0.06),
-            color: gris(g),
           });
         }
       }
@@ -194,36 +247,34 @@
         tramo(s, s + 6, -camino.medio * 0.84, 0.085, geoBorde);
       }
 
-      const malla = new THREE.Mesh(fusionar(partes), new THREE.MeshStandardMaterial({
+      return crearBloques(items, new THREE.MeshStandardMaterial({
         color: 0xb9b6a8, vertexColors: true, roughness: 0.88, metalness: 0.0,
         polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4,
       }));
-      malla.receiveShadow = true;
-      return malla;
     }
 
     function charcos() {
-      const partes = [];
       const rnd = crearPRNG(CONFIG.semilla + 777);
       const geo = new THREE.CircleGeometry(1, 12);
       geo.rotateX(-Math.PI / 2);
-      for (let s = 40; s < caminos.porId.carretera.longitud - 40; s += 26 + rnd() * 90) {
+      const camino = caminos.porId.carretera;
+      const items = [];
+      for (let s = 40; s < camino.longitud - 40; s += 26 + rnd() * 90) {
         const m = caminos.puntoEn('carretera', s);
-        const d = (rnd() - 0.5) * caminos.porId.carretera.medio * 1.3;
+        const d = (rnd() - 0.5) * camino.medio * 1.1;
         const x = m.x + m.px * d;
         const z = m.z + m.pz * d;
         const r = 0.5 + rnd() * 1.5;
-        partes.push({
-          geometria: geo,
-          matriz: matriz(x, m.y + 0.055, z, 0, rnd() * 3, 0, r, 1, r),
+        items.push({
+          s: s, x: x, z: z, geometria: geo,
+          matriz: matriz(x, m.y + peralte(camino.medio, d) + 0.01, z, 0, rnd() * 3, 0, r, 1, r),
         });
       }
-      if (!partes.length) return null;
-      const malla = new THREE.Mesh(fusionar(partes), new THREE.MeshStandardMaterial({
-        color: 0x0b0f12, roughness: 0.12, metalness: 0.5,
+      if (!items.length) return null;
+      return crearBloques(items, new THREE.MeshStandardMaterial({
+        color: 0x39434b, roughness: 0.2, metalness: 0.04,
         polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
       }));
-      return malla;
     }
 
     function senales() {
@@ -276,7 +327,7 @@
     if (agua) grupo.add(agua);
     grupo.add(senales());
 
-    return { grupo: grupo, hitos: hitos };
+    return { grupo: grupo, hitos: hitos, actualizar: actualizarDetalle };
   };
 
   function crearHitosCarretera(caminos, terreno) {

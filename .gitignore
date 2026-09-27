@@ -10,4 +10,12 @@ desktop.ini
 
 # Harnesses de prueba temporales
 _v.html
-_prueba*.html
+_test.html
+_m_*.html
+_manos.html
+_volante.html
+_fin.html
+_lin*.html
+
+# Modelos GLB de origen: se regeneran con tools/glb2coche.mjs
+*.glb

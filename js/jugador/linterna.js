@@ -2,6 +2,7 @@
   'use strict';
 
   const { CONFIG } = J;
+  const TEX = J.TEX;
 
   J.crearLinterna = function crearLinterna(escena) {
     const F = CONFIG.linterna;
@@ -18,10 +19,59 @@
     const halo = new THREE.PointLight(0xffeccc, 0, 2.4, 1.8);
     escena.add(halo);
 
+    // cono falso: un volumen aditivo muy tenue donde apunta el foco. No
+    // proyecta sombra ni recibe luz, solo insinua el haz en el aire HUMedo.
+    const conoLargo = F.distancia * 0.42;
+    const conoGeo = new THREE.CylinderGeometry(0.035, F.distancia * 0.3, conoLargo, 18, 1, true);
+    conoGeo.translate(0, -conoLargo / 2, 0);
+    conoGeo.rotateX(-Math.PI / 2);
+    const conoMat = new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      uniforms: { fuerza: { value: 0 } },
+      vertexShader: [
+        'varying float vH;',
+        'void main() {',
+        '  vH = clamp(-position.z / ' + conoLargo.toFixed(3) + ', 0.0, 1.0);',
+        '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+        '}',
+      ].join('\n'),
+      fragmentShader: [
+        'uniform float fuerza;',
+        'varying float vH;',
+        'void main() {',
+        '  float a = (1.0 - vH) * (1.0 - vH) * fuerza;',
+        '  gl_FragColor = vec4(1.0, 0.95, 0.82, a * 0.16);',
+        '}',
+      ].join('\n'),
+    });
+    const cono = new THREE.Mesh(conoGeo, conoMat);
+    cono.frustumCulled = false;
+    cono.renderOrder = 3;
+    escena.add(cono);
+
+    // halo de lente: sprite suave en la boca del haz
+    const haloGeo = new THREE.SpriteMaterial({
+      map: TEX.haloLinterna(),
+      color: 0xfff2d8,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    const haloLente = new THREE.Sprite(haloGeo);
+    haloLente.scale.setScalar(0.5);
+    haloLente.renderOrder = 4;
+    escena.add(haloLente);
+
     const estado = { encendida: false, parpadeo: 0, pila: 1, origen: new THREE.Vector3() };
     const desplazamiento = new THREE.Vector3();
     const delante = new THREE.Vector3();
     const objetivo = new THREE.Vector3();
+    const _arriba = new THREE.Vector3();
+    const _mira = new THREE.Matrix4();
 
     function actualizar(dt, camara, vehiculo) {
       const meta = estado.encendida ? 1 : 0;
@@ -57,6 +107,18 @@
       objetivo.copy(estado.origen).addScaledVector(delante, 14);
       foco.target.position.copy(objetivo);
       foco.target.updateMatrixWorld();
+
+      // el cono nace en la boca de la linterna y se orienta al foco
+      cono.position.copy(estado.origen);
+      _arriba.set(0, 1, 0);
+      _mira.lookAt(estado.origen, objetivo, _arriba);
+      cono.quaternion.setFromRotationMatrix(_mira);
+      conoMat.uniforms.fuerza.value = factor;
+      cono.visible = factor > 0.02;
+
+      haloLente.position.copy(estado.origen).addScaledVector(delante, 0.1);
+      haloGeo.opacity = factor * 0.75;
+      haloLente.visible = factor > 0.02;
     }
 
     return {

@@ -191,40 +191,68 @@
       cartulina: new THREE.MeshStandardMaterial({ color: 0x3a2f26, roughness: 0.98 }),
     };
 
-    function mano() {
-      const partes = [
-        caja(0.062, 0.028, 0.135, 0, 0, 0.055),
-        caja(0.058, 0.024, 0.05, 0, 0.004, -0.018),
-        caja(0.016, 0.02, 0.05, -0.024, 0.012, 0.002),
-        caja(0.016, 0.02, 0.05, 0.024, 0.012, 0.002),
-        cilindro(0.036, 0.042, 0.2, 8, 0, -0.012, -0.16, Math.PI / 2.1),
-      ];
-      return J.fusionar(partes);
-    }
-
-    function manga() {
-      return J.fusionar([
-        cilindro(0.05, 0.064, 0.34, 14, 0, -0.004, -0.31, Math.PI / 2),
-        caja(0.086, 0.086, 0.04, 0, -0.002, -0.19),
-        caja(0.072, 0.072, 0.03, 0, -0.002, -0.472),
-      ]);
-    }
-
-    const geoMano = mano();
-    const geoManga = manga();
-
-    const izq = new THREE.Group();
-    const der = new THREE.Group();
-    izq.add(new THREE.Mesh(geoMano, M.piel));
-    izq.add(new THREE.Mesh(geoManga, M.manga));
-    der.add(new THREE.Mesh(geoMano, M.piel));
-    der.add(new THREE.Mesh(geoManga, M.manga));
-    izq.position.set(-0.21, -0.262, -0.68);
-    der.position.set(0.21, -0.262, -0.68);
-    izq.rotation.set(0.24, 0.3, 0.14);
-    der.rotation.set(0.24, -0.3, -0.14);
+    // Brazos: mismo rig que usa el volante (js/sistemas/manos.js)
+    const izq = J.crearBrazo(M, true);
+    const der = J.crearBrazo(M, true);
     raiz.add(izq);
     raiz.add(der);
+
+    const _ad = new THREE.Vector3();
+    const _hs = new THREE.Vector3();
+    const _hc = new THREE.Vector3();
+    const _hm = new THREE.Vector3();
+    const _dd = new THREE.Vector3();
+    // direcciones de los dedos por pose
+    const DEDOS = {
+      relaxed: new THREE.Vector3(0, -0.56, -0.83),
+      ahead: new THREE.Vector3(0, -0.13, -0.99),
+      foto: new THREE.Vector3(0, -0.05, -0.999),
+      libro: new THREE.Vector3(0, -0.66, -0.75),
+    };
+
+    const _cero = new THREE.Vector3();
+    const _qi = new THREE.Quaternion();
+    const _arriba = new THREE.Vector3(0, 1, 0);
+    const _df = new THREE.Vector3();
+    const _mid = new THREE.Vector3();
+    const _eje = new THREE.Vector3();
+    const _perp = new THREE.Vector3();
+
+    // Coloca el codo respetando la longitud de los huesos: dados hombro y
+    // muneca, el codo sale del triangulo isosceles. `abertura` es el angulo
+    // del codo respecto a la horizontal (negativo = hacia abajo).
+    function codoDe(hombro, muneca, lado, apertura) {
+      const L = J.REGISTRO.brazo.largoHombro;
+      _mid.addVectors(hombro, muneca).multiplyScalar(0.5);
+      _eje.subVectors(muneca, hombro);
+      const d = _eje.length() || 0.0001;
+      _eje.multiplyScalar(1 / d);
+      _perp.crossVectors(_eje, _arriba);
+      if (_perp.lengthSq() < 1e-9) _perp.set(1, 0, 0);
+      else _perp.normalize();
+      const h = Math.sqrt(Math.max(0.0004, L * L - (d * d) / 4));
+      return _hc.copy(_mid)
+        .addScaledVector(_perp, Math.cos(apertura) * h * lado)
+        .addScaledVector(_arriba, Math.sin(apertura) * h);
+    }
+
+    // Coloca un brazo respetando la longitud de los huesos: `codo` y
+    // `muneca` son solo direcciones hacia donde debe ir cada articulacion.
+    // `dedos` es la direccion de los dedos; si se omite, siguen el antebrazo.
+    function brazoEn(br, lado, hombro, codo, muneca, dedos) {
+      const R = J.REGISTRO.brazo;
+      br.position.copy(hombro);
+      const c = br.userData.codo;
+      J.apuntarHueso(br, hombro, codo);
+      c.position.set(0, -R.largoHombro, 0);
+      _df.subVectors(muneca, codo);
+      if (_df.lengthSq() < 1e-9) _df.set(0, -1, 0);
+      else _df.normalize();
+      _qi.copy(br.quaternion).invert();
+      _ad.copy(_df).applyQuaternion(_qi);
+      J.apuntarHueso(c, _cero, _ad);
+      J.orientarMuneca(c, c.userData.mano, dedos || _df, _arriba);
+    }
 
     const camaraFoto = new THREE.Group();
     const cuerpoCam = new THREE.Mesh(J.fusionar([
@@ -248,11 +276,11 @@
     const tubo = new THREE.Mesh(new THREE.CylinderGeometry(0.021, 0.021, 0.115, 14), M.oscuro);
     tubo.position.set(0, -0.012, -0.15);
     camaraFoto.add(tubo);
-    camaraFoto.position.set(0.01, -0.152, -0.44);
-    camaraFoto.scale.setScalar(1.12);
-    camaraFoto.rotation.set(0.06, 0.02, 0);
-    camaraFoto.visible = false;
-    raiz.add(camaraFoto);
+    // Las herramientas se enganchan a la mano: lasdns siguen al rig.
+    camaraFoto.position.set(0, -0.03, -0.035);
+    camaraFoto.rotation.set(0, 0, 0);
+    camaraFoto.scale.setScalar(1.06);
+    der.userData.mano.add(camaraFoto);
 
     const pagina = new THREE.Mesh(
       new THREE.PlaneGeometry(0.235, 0.29),
@@ -273,23 +301,10 @@
     hoja.rotation.y = Math.PI;
     hoja.position.set(0, 0, -0.016);
     libreta.add(hoja);
-    libreta.position.set(-0.115, -0.105, -0.5);
-    libreta.rotation.set(0.44, 0.34, -0.07);
+    libreta.position.set(0, -0.03, -0.05);
+    libreta.rotation.set(0.1, 0, 0.06);
     libreta.visible = false;
-    raiz.add(libreta);
-
-    const izqFoto = new THREE.Group();
-    const derFoto = new THREE.Group();
-    izqFoto.add(new THREE.Mesh(geoMano, M.piel));
-    derFoto.add(new THREE.Mesh(geoMano, M.piel));
-    izqFoto.position.set(-0.17, -0.2, -0.5);
-    derFoto.position.set(0.17, -0.2, -0.5);
-    izqFoto.rotation.set(0.32, 0.44, 0.12);
-    derFoto.rotation.set(0.28, -0.14, -0.07);
-    izqFoto.visible = false;
-    derFoto.visible = false;
-    raiz.add(izqFoto);
-    raiz.add(derFoto);
+    izq.userData.mano.add(libreta);
 
     const linternaMano = new THREE.Group();
     const cuerpoLinterna = new THREE.Mesh(J.fusionar([
@@ -307,15 +322,9 @@
     }));
     lenteLinterna.position.set(0, 0, -0.124);
     linternaMano.add(lenteLinterna);
-    const gripLinterna = new THREE.Group();
-    gripLinterna.add(new THREE.Mesh(geoMano, M.piel));
-    gripLinterna.position.set(0.004, -0.028, 0.012);
-    gripLinterna.rotation.set(0.1, 0, 0);
-    linternaMano.add(gripLinterna);
-    const mangaLinterna = new THREE.Mesh(geoManga, M.manga);
-    linternaMano.add(mangaLinterna);
+    linternaMano.position.set(0, -0.004, -0.03);
     linternaMano.visible = false;
-    raiz.add(linternaMano);
+    der.userData.mano.add(linternaMano);
 
     let actual = 'manos';
     let showing = true;
@@ -333,10 +342,9 @@
       const conFoto = actual === 'camara';
       const conLibreta = actual === 'libreta';
       const conLinterna = actual === 'linterna';
-      izq.visible = arriba && !conFoto && !conLibreta && !conLinterna;
-      der.visible = arriba && !conFoto && !conLibreta && !conLinterna;
-      izqFoto.visible = arriba && conFoto;
-      derFoto.visible = arriba && conFoto;
+      // los dos brazos siempre visibles: sostienen la herramienta activa
+      izq.visible = arriba;
+      der.visible = arriba;
       camaraFoto.visible = arriba && conFoto;
       libreta.visible = arriba && conLibreta;
       pagina.visible = arriba && conLibreta;
@@ -434,26 +442,31 @@
         const marchaL = Math.sin(tiempo * 7.4 + Math.PI) * avance * 0.012;
 
         if (actual === 'manos') {
-          izq.position.set(-0.21 + bob * 1.1 + marchaL, -0.262 - Math.abs(bob) * 0.5 + respiro - sube * 0.24, -0.68 + t * 0.03);
-          der.position.set(0.21 + bob * 1.1 - marchaL, -0.262 - Math.abs(bob) * 0.5 + respiro - sube * 0.24, -0.68 + t * 0.03);
-          izq.rotation.set(0.24 - bob * 1.8 + marcha, 0.3, 0.14);
-          der.rotation.set(0.24 + bob * 1.8 - marcha, -0.3, -0.14);
+          for (let k = 0; k < 2; k += 1) {
+            const s = k ? 1 : -1;
+            const en = k ? der : izq;
+            const mar = k ? marcha : marchaL;
+            _hs.set(s * 0.235, -0.26 - respiro - sube * 0.06, -0.28);
+            _hm.set(s * 0.255 + s * mar * 1.2, -0.27 - Math.abs(bob) * 0.24 - sube * 0.05, -0.7);
+            _dd.copy(DEDOS.relaxed);
+            _dd.x += s * (mar * 1.5 + bob * 0.5);
+            brazoEn(en, s, _hs, codoDe(_hs, _hm, s, -1 + bob * s * 0.3), _hm, _dd);
+          }
         } else if (actual === 'linterna') {
           const fovObjetivo = 52;
           if (Math.abs(cam.fov - fovObjetivo) > 0.01) {
             cam.fov += (fovObjetivo - cam.fov) * Math.min(1, dt * 8);
             cam.updateProjectionMatrix();
           }
-          linternaMano.position.set(
-            0.235 + bob * 0.7 - marcha * 0.5,
-            -0.205 - Math.abs(bob) * 0.4 + respiro - sube * 0.2,
-            -0.5 + t * 0.04 + marcha * 0.9
-          );
-          linternaMano.rotation.set(
-            -0.1 + bob * 0.9 - marcha * 1.4,
-            -0.16 - balanceo * 0.6,
-            0.1 + marcha * 0.7
-          );
+          _hs.set(0.2 + bob * 0.35, -0.26 - respiro - sube * 0.06, -0.28);
+          _hm.set(0.1 - marcha * 0.6, -0.25 - Math.abs(bob) * 0.2, -0.66);
+          _dd.copy(DEDOS.ahead);
+          _dd.x += bob * 0.4 - marcha * 0.5;
+          _dd.y += bob * 0.3;
+          brazoEn(der, 1, _hs, codoDe(_hs, _hm, 1, -0.75 + balanceo * 0.4), _hm, _dd);
+          _hs.set(-0.235, -0.26 - respiro - sube * 0.06, -0.28);
+          _hm.set(-0.255 - marchaL, -0.27 - Math.abs(bob) * 0.24, -0.7);
+          brazoEn(izq, -1, _hs, codoDe(_hs, _hm, -1, -1), _hm, DEDOS.relaxed);
         } else if (actual === 'camara') {
           pasoFoto = Math.max(0, pasoFoto - dt * 3.4);
           const disparo = pasoFoto > 0 ? Math.sin((1 - pasoFoto) * Math.PI) : 0;
@@ -462,13 +475,17 @@
             cam.fov += (fovObjetivo - cam.fov) * Math.min(1, dt * 8);
             cam.updateProjectionMatrix();
           }
-          const cy = -0.2 + t * 0.07 - disparo * 0.115;
-          izqFoto.position.set(-0.17 - t * 0.02 + bob * 0.5 - marcha, cy, -0.5 + t * 0.04);
-          derFoto.position.set(0.17 + marcha, cy, -0.5 + t * 0.02);
-          izqFoto.rotation.set(0.32 - bob * 1.3, 0.44, 0.12);
-          derFoto.rotation.set(0.32 - bob * 1.3 + marcha * 1.2, -0.14, -0.06);
-          camaraFoto.position.set(0.01 + bob * 0.6, cy + 0.048 - disparo * 0.115, -0.5 + t * 0.02);
-          camaraFoto.rotation.set(0.06 - bob * 0.35 - disparo * 0.12, 0.02, bob * 0.18);
+          _hs.set(0.17 + bob * 0.3, -0.26 - respiro - sube * 0.05, -0.26);
+          _hm.set(0.075 + marcha, -0.27 - disparo * 0.1, -0.6);
+          _dd.copy(DEDOS.foto);
+          _dd.x += bob * 0.3;
+          brazoEn(der, 1, _hs, codoDe(_hs, _hm, 1, -0.7 + balanceo * 0.3), _hm, _dd);
+          _hs.set(-0.17 - bob * 0.3, -0.26 - respiro - sube * 0.05, -0.26);
+          _hm.set(-0.055 - marcha, -0.28 - disparo * 0.1, -0.61);
+          _dd.copy(DEDOS.foto);
+          _dd.x -= bob * 0.3;
+          brazoEn(izq, -1, _hs, codoDe(_hs, _hm, -1, -0.7), _hm, _dd);
+          camaraFoto.position.set(0, -0.028 - disparo * 0.1, -0.03 + disparo * 0.03);
           M.flash.emissiveIntensity = Math.max(0.25, M.flash.emissiveIntensity - dt * 9);
         } else {
           const fovObjetivo = 52 * (1 - t * 0.1);
@@ -476,8 +493,15 @@
             cam.fov += (fovObjetivo - cam.fov) * Math.min(1, dt * 8);
             cam.updateProjectionMatrix();
           }
-          libreta.position.set(-0.115 + marcha, -0.105 - sube * 0.2 + marcha * 0.4, -0.5 + sube * 0.16);
-          libreta.rotation.set(0.44 - sube * 0.36, 0.34 - sube * 0.28 + balanceo * 0.3, -0.07 - marcha * 0.5);
+          _hs.set(-0.21 - bob * 0.3, -0.26 - respiro - sube * 0.05, -0.28);
+          _hm.set(-0.11 + marcha * 0.6, -0.28 - sube * 0.1, -0.6);
+          _dd.copy(DEDOS.libro);
+          _dd.x += marcha * 0.4;
+          brazoEn(izq, -1, _hs, codoDe(_hs, _hm, -1, -0.7), _hm, _dd);
+          libreta.rotation.set(-0.16 - sube * 0.1, 0, 0.05 + balanceo * 0.2);
+          _hs.set(0.235, -0.26 - respiro - sube * 0.06, -0.28);
+          _hm.set(0.255 - marcha, -0.27 - Math.abs(bob) * 0.24, -0.7);
+          brazoEn(der, 1, _hs, codoDe(_hs, _hm, 1, -1), _hm, DEDOS.relaxed);
         }
       },
     };

@@ -420,9 +420,26 @@
     });
   }
 
+  // halo radial para el lente de la linterna y los faros
+  function texturaHalo() {
+    return conTextura('halo', 128, function (ctx, tam) {
+      const c = tam / 2;
+      const g = ctx.createRadialGradient(c, c, 0, c, c, c);
+      g.addColorStop(0, 'rgba(255,255,255,1)');
+      g.addColorStop(0.18, 'rgba(255,246,226,0.72)');
+      g.addColorStop(0.45, 'rgba(255,238,205,0.24)');
+      g.addColorStop(0.75, 'rgba(255,230,190,0.05)');
+      g.addColorStop(1, 'rgba(255,230,190,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, tam, tam);
+    });
+  }
+
   J.TEX = {
     PALETA: PALETA,
     detalle: texturaDetalle,
+    halo: texturaHalo,
+    haloLinterna: texturaHalo,
     asfalto: texturaAsfalto,
     hormigon: texturaHormigon,
     ladrillo: texturaLadrillo,
