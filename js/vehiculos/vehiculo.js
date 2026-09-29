@@ -243,7 +243,11 @@
 
     // punto de agarre en el volante, en coordenadas del coche
     function actualizarManosVolante(dt) {
-      if (!volanteMalla) { manosVolante.visible = false; return; }
+      // fuera del asiento los brazos se apagan: si no quedan flotando
+      // dentro del habitaculo mientras el jugador va a pie
+      manosVolante.visible = estado.ocupado;
+      if (!volanteMalla) return;
+      if (!estado.ocupado) return;
       manosVolante.visible = true;
       raiz.updateMatrixWorld(true);
       _centro.setFromMatrixPosition(volanteMalla.matrixWorld);
@@ -544,6 +548,8 @@
     }
 
     function estacionar() {
+      estado.ocupado = false;
+      manosVolante.visible = false;
       estado.velocidad = 0;
       estado.velocidadLateral = 0;
       estado.giro = 0;

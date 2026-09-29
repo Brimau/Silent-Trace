@@ -36,6 +36,18 @@
       pitchMax: 1.32,
       near: 0.08,
       far: 620,
+      // camara dentro del habitaculo. Los limites de yaw son relativos al
+      // rumbo del coche: mirar de lado no puede hacer perder la carretera.
+      conduciendo: {
+        yawMax: 2.3,        // ~132 grados de vista lateral a cada lado
+        seguimiento: 5.5,   // how smoothly the camera catches the car heading
+        inerciaGiro: 4.5,   // extra lag on the steering, gives the camera weight
+        rollPorGiro: 0.038, // roll at full lock, in radians
+        rollSuavizado: 4.5,
+        pitchMin: -0.52,
+        pitchMax: 0.30,
+        balanceoBucle: 0.16,
+      },
     },
 
     jugador: {

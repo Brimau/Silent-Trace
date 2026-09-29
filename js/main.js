@@ -171,6 +171,10 @@
       camara.rotation.set(0, -vehiculo.direccion, 0);
       mirada.yaw = -vehiculo.direccion;
       mirada.pitch = 0;
+      cab.yaw = mirada.yaw;
+      cab.localYaw = 0;
+      cab.localPitch = 0;
+      cab.roll = 0;
       jugador = J.crearJugador(terreno, colisiones);
       linterna = J.crearLinterna(escena);
       interaccion = J.crearInteraccion(colisiones, hud);
@@ -257,6 +261,49 @@
 
   const COTEJO = { adelante: -0.030, atras: 0.020, lateral: 0.016, cabeceo: 0.011 };
 
+  // ---------------------------------------------------------- camara interior
+  // Magnitudes separadas a proposito, porque se mezclaban antes:
+  //   rumbo      direccion del coche            (vehiculo.direccion)
+  //   raton      desplazamiento local del jugador (cab.localYaw/localPitch)
+  //   inercia    suavizado del rumbo hacia la camara (cab.yaw)
+  //   suspension cabeceo y balanceo de la carroceria (cabCam.pitch/roll)
+  // El jugador mira en un intervalo alrededor del coche; el coche nunca
+  // arrastra la vista mas alla de ese intervalo.
+  const cab = {
+    localYaw: 0,
+    localPitch: 0,
+    yaw: 0,
+    roll: 0,
+  };
+  const CD = C.conduciendo;
+
+  function envolverAngulo(a) {
+    return Math.atan2(Math.sin(a), Math.cos(a));
+  }
+
+  function mirarConduciendo(m) {
+    cab.localYaw = Math.max(-CD.yawMax, Math.min(CD.yawMax, cab.localYaw - m.x));
+    cab.localPitch = Math.max(CD.pitchMin, Math.min(CD.pitchMax, cab.localPitch - m.y));
+  }
+
+  // Situa la camara dentro del habitaculo. Devuelve el roll ya suavizado.
+  function camaraInterior(dt, info, baseYaw) {
+    const objetivo = -vehiculo.direccion - cab.localYaw;
+    const diferencia = envolverAngulo(objetivo - cab.yaw);
+    cab.yaw += diferencia * Math.min(1, dt * CD.seguimiento);
+    mirada.yaw = cab.yaw;
+
+    const destinoPitch = cab.localPitch - (info.acelLong || 0) * 0.004;
+    mirada.pitch += (destinoPitch - mirada.pitch) * Math.min(1, dt * CD.seguimiento);
+
+    const giro = Math.max(-1, Math.min(1, (info.giro || 0) / 0.4));
+    const carga = Math.min(1, Math.abs(info.velocidad) / 5);
+    const lateral = Math.max(-1, Math.min(1, (info.lateral || 0) / 2.4));
+    const objetivoRoll = -giro * carga * CD.rollPorGiro - lateral * 0.008;
+    cab.roll += (objetivoRoll - cab.roll) * Math.min(1, dt * CD.rollSuavizado);
+    return cab.roll;
+  }
+
   function camaraCoche(dt, info, sen, cos, sueloY, alturaOjos, baseX, baseZ) {
     tCab += dt;
     tSacudida += dt;
@@ -293,7 +340,7 @@
     suspensionY += suspensionV * dt;
 
     cabCam.pitch = suavisado(cabeceoObjetivo + cabeceoVibra + golpeTope * (azar() - 0.5) * 0.02, cabCam.pitch, 7);
-    cabCam.roll = suavisado(balanceoObjetivo, cabCam.roll, 6);
+    cabCam.roll = suavisado(balanceoObjetivo * CD.balanceoBucle, cabCam.roll, 6);
 
     const localX = cos * suspensionY + sen * lateralObjetivo * 0.5;
     const localZ = -sen * suspensionY + cos * lateralObjetivo * 0.5;
@@ -306,7 +353,7 @@
 
   function limiteMirada(conduciendoAhora) {
     return conduciendoAhora
-      ? { min: -0.62, max: 0.40 }
+      ? { min: C.conduciendo.pitchMin, max: C.conduciendo.pitchMax }
       : { min: C.pitchMin, max: C.pitchMax };
   }
 
@@ -336,7 +383,12 @@
       conduciendo = true;
       linterna.apagar();
       herramientas.guardar();
-      mirada.yaw = -vehiculo.direccion;
+      // arrancar mirando al frente del coche, sin desvios heredados
+      cab.localYaw = 0;
+      cab.localPitch = 0;
+      cab.yaw = -vehiculo.direccion;
+      cab.roll = 0;
+      mirada.yaw = cab.yaw;
       mirada.pitch = 0;
     }
     origenCamara = { x: camara.position.x, y: camara.position.y, z: camara.position.z };
@@ -388,7 +440,13 @@
 
   function aplicarMirada() {
     const m = entrada.consumirMirada();
-    const limites = limiteMirada(conduciendo);
+    if (conduciendo) {
+      // dentro del habitaculo el raton mueve la vista *relativa al coche*,
+      // nunca el rumbo absoluto: asi el giro no arrastra la camara
+      mirarConduciendo(m);
+      return;
+    }
+    const limites = limiteMirada(false);
     mirada.yaw -= m.x;
     mirada.pitch = Math.max(limites.min, Math.min(limites.max, mirada.pitch - m.y));
   }
@@ -524,10 +582,10 @@
       );
       if (t >= 1) { transicion = -1; origenCamara = null; }
     } else if (enCoche) {
-      const cab = camaraCoche(dt, info, sen, cos, sueloY, alturaOjos, objetivoX, objetivoZ);
-      camara.position.set(cab.x, cab.y, cab.z);
-      balanceoAplicado = cab.roll;
-      cabeceoAplied = cab.pitch;
+      const pos = camaraCoche(dt, info, sen, cos, sueloY, alturaOjos, objetivoX, objetivoZ);
+      camara.position.set(pos.x, pos.y, pos.z);
+      balanceoAplicado = camaraInterior(dt, info);
+      cabeceoAplied = pos.pitch;
     } else {
       const b = jugador.balanceoCabeza;
       const respiracion = Math.sin(tiempoJuego * 1.15) * 0.0035;
@@ -535,15 +593,10 @@
       balanceoAplicado = b.balanceo;
       cabeceoAplied = b.cabeceo;
     }
-    void fuera;
-
     camara.rotation.x = Math.max(limitesVista.min - 0.05, Math.min(limitesVista.max + 0.05, mirada.pitch + cabeceoAplied));
     camara.rotation.y = mirada.yaw;
     camara.rotation.z = balanceoAplicado;
-    if (enCoche && Math.abs(vehiculo.direccion + camara.rotation.y) > Math.PI) {
-      mirada.yaw -= Math.PI * 2;
-      camara.rotation.y = mirada.yaw;
-    }
+    void fuera;
 
     const fovObjetivo = enCoche
       ? C.fovConduciendo + Math.min(5, Math.abs(info.velocidad) * 0.22)
