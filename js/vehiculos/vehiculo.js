@@ -348,7 +348,7 @@
       raiz.position.copy(estado.posicion);
       raiz.rotation.set(0, estado.direccion, 0);
       raiz.rotateX(-pendiente() * 0.85 + estado.cabeceo);
-      raiz.rotateZ(-inclinacionLateral() * 0.6 - estado.velocidadLateral * 0.006 + estado.balanceo);
+      raiz.rotateZ(-inclinacionLateral() * 0.5 - estado.velocidadLateral * 0.0025 + estado.balanceo);
     }
 
     function anguloRueda() {
@@ -498,7 +498,13 @@
 
       const acelLong = (estado.velocidad - absPrevio) / Math.max(dt, 1e-4);
       estado.cabeceo += ((-acelLong / V.masa) * V.cabeceoAceleracion - estado.cabeceo) * Math.min(1, dt * 5);
-      estado.balanceo += (estado.giro * estado.velocidad * V.balanceoGiro - estado.balanceo) * Math.min(1, dt * 4.5);
+      // El balanceo va con la aceleracion lateral, no con el angulo de
+      // volante: corregirse un poco no inclina el coche, entrar en una
+      // curva si. Antes se saturaba en 20 grados en cualquier curva rapida.
+      const acelLat = estado.giro * estado.velocidad;
+      const f = Math.min(1, Math.abs(acelLat) / V.aceleracionLateralMax);
+      const objetivoBalanceo = Math.sign(acelLat) * f * f * V.balanceoMax;
+      estado.balanceo += (objetivoBalanceo - estado.balanceo) * Math.min(1, dt * 6);
 
       aplicarPose();
       estado.rotacionRuedas += (estado.velocidad / R) * dt;

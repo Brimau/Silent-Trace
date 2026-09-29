@@ -100,7 +100,8 @@
       track: 1.52,
       suspension: 7.0,
       cabeceoAceleracion: 0.016,
-      balanceoGiro: 0.055,
+      // inclinacion maxima de la carrocería en curva, en radianes (~5,4 grados)
+      balanceoMax: 0.095,
       anguloVolante: 5.0,
       multiplicadorRueda: 2.2,
     },
