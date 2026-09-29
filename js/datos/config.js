@@ -11,19 +11,22 @@
     },
 
     niebla: {
-      densidad: 0.0085,
-      color: 0x151d28,
+      // mas densa: a partir de unos 30 m no se ve lo que hay delante
+      densidad: 0.0165,
+      color: 0x0b1017,
       alturaCapa: 1.25,
       capas: 18,
       opacidad: 0.085,
     },
 
     luna: {
-      intensidad: 0.95,
-      color: 0x8fa4c4,
-      intensidadHemisf: 0.46,
-      colorSuelo: 0x121a18,
-      hemisfCielo: 0x2c3c52,
+      // la luna solo insinua siluetas. Sin relleno ambiental casi todo el
+      // mundo queda negro y solo se ve lo que ilumina la linterna o el coche
+      intensidad: 0.40,
+      color: 0x6d84a8,
+      intensidadHemisf: 0.14,
+      colorSuelo: 0x0a0f0e,
+      hemisfCielo: 0x18222f,
     },
 
     camara: {
@@ -123,14 +126,15 @@
     interaccion: { distancia: 2.9 },
 
     post: {
-      bloom: { strength: 0.3, radius: 0.65, threshold: 0.72 },
-      grano: 0.045,
-      vineta: 0.58,
-      aberracion: 0.0011,
-      contraste: 1.12,
-      saturacion: 0.82,
-      elevacion: 0.062,
-      elevacionColor: [0.09, 0.125, 0.185],
+      bloom: { strength: 0.34, radius: 0.65, threshold: 0.66 },
+      grano: 0.058,
+      vineta: 0.82,
+      aberracion: 0.0013,
+      contraste: 1.2,
+      saturacion: 0.62,
+      // el levantamiento en azul deja los negros profundos, no gris
+      elevacion: 0.032,
+      elevacionColor: [0.07, 0.10, 0.16],
     },
 
     calidades: {

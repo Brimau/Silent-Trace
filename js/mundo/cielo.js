@@ -44,9 +44,9 @@
     escena.add(grupo);
 
     const uniformsCielo = {
-      uCenit: { value: new THREE.Color(0x080d14) },
-      uHorizonte: { value: new THREE.Color(0x1a2532) },
-      uBruma: { value: new THREE.Color(0x222e3c) },
+      uCenit: { value: new THREE.Color(0x04070b) },
+      uHorizonte: { value: new THREE.Color(0x0d141d) },
+      uBruma: { value: new THREE.Color(0x141c26) },
       uTiempo: { value: 0 },
     };
 
@@ -81,9 +81,10 @@
     cupula.renderOrder = -10;
     grupo.add(cupula);
 
+    // luna mas pequena y apagada: ilumina, pero no sirve de faro
     const luna = new THREE.Mesh(
-      new THREE.CircleGeometry(7.5, 32),
-      new THREE.MeshBasicMaterial({ color: 0x9db0c8, fog: false, toneMapped: false })
+      new THREE.CircleGeometry(5.5, 32),
+      new THREE.MeshBasicMaterial({ color: 0x7b8ca3, fog: false, toneMapped: false })
     );
     luna.position.copy(DIR_LUNA).multiplyScalar(430);
     luna.lookAt(0, 0, 0);
@@ -91,9 +92,9 @@
 
     const haloLuna = new THREE.Sprite(new THREE.SpriteMaterial({
       map: TEX.resplandor(),
-      color: 0x54687f,
+      color: 0x38465a,
       transparent: true,
-      opacity: 0.2,
+      opacity: 0.1,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       fog: false,
@@ -201,8 +202,10 @@
         map: mapa,
         transparent: true,
         depthWrite: false,
-        opacity: 0.055 + prng() * 0.085,
-        color: 0x9fb0be,
+        // sin iluminar: si no se oscurece a mano, la bruma del suelo
+        // brillaria sobre un mundo que ya esta a oscuras
+        opacity: 0.04 + prng() * 0.06,
+        color: 0x54626e,
         side: THREE.DoubleSide,
       });
 
