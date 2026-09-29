@@ -406,6 +406,16 @@
         lenteLinterna.material.emissiveIntensity = encendida ? 2.6 : 0.04;
       },
 
+      // Posicion de la lente en el espacio de la camara de overlay, que es
+      // identico al espacio de la camara principal. La linterna del mundo
+      // sale de aqui para que el haz nazca en la mano y no en los ojos.
+      punteroLinterna(destino) {
+        if (!linternaOn || !linternaMano.visible) return false;
+        raiz.updateMatrixWorld(true);
+        destino.setFromMatrixPosition(lenteLinterna.matrixWorld);
+        return true;
+      },
+
       puedeDisparar() {
         return showing && anim > 0.7 && actual === 'camara' && tiempo - ultimaFoto > 0.85;
       },

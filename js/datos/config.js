@@ -103,11 +103,11 @@
     },
 
     linterna: {
-      intensidad: 19,
+      intensidad: 15,
       distancia: 27,
       angulo: 0.4,
-      penumbra: 0.72,
-      decaimiento: 1.35,
+      penumbra: 0.66,
+      decaimiento: 1.0,
     },
 
     faros: {

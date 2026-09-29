@@ -72,7 +72,7 @@
   function consejo(clave, texto) {
     if (consejoVistos.has(clave)) return;
     consejoVistos.add(clave);
-    el.consejo.innerHTML = texto;
+    el.consejo.innerHTML = texto === undefined ? '' : texto;
     el.consejo.classList.add('visible');
     temporizadorConsejo = 5.5;
   }
@@ -282,13 +282,15 @@
   }
 
   function mirarConduciendo(m) {
+    // localYaw es el desplazamiento en radianes de yaw de camara, misma
+    // convencion que a pie: raton a la derecha (movementX > 0) lo resta
     cab.localYaw = Math.max(-CD.yawMax, Math.min(CD.yawMax, cab.localYaw - m.x));
     cab.localPitch = Math.max(CD.pitchMin, Math.min(CD.pitchMax, cab.localPitch - m.y));
   }
 
   // Situa la camara dentro del habitaculo. Devuelve el roll ya suavizado.
-  function camaraInterior(dt, info, baseYaw) {
-    const objetivo = -vehiculo.direccion - cab.localYaw;
+  function camaraInterior(dt, info) {
+    const objetivo = -vehiculo.direccion + cab.localYaw;
     const diferencia = envolverAngulo(objetivo - cab.yaw);
     cab.yaw += diferencia * Math.min(1, dt * CD.seguimiento);
     mirada.yaw = cab.yaw;
@@ -473,7 +475,7 @@
         herramientas.seleccionar('linterna');
         herramientas.setLinterna(true);
         hud.brindis('Linterna encendida.');
-        consejo('F — apaga y enciende la linterna');
+        consejo('linterna-uso', 'Linterna en la mano. <b>F</b> para apagarla.');
       } else {
         herramientas.setLinterna(false);
         if (herramientas.actual === 'linterna') herramientas.seleccionar('manos');
@@ -606,7 +608,7 @@
       camara.updateProjectionMatrix();
     }
 
-    linterna.actualizar(dt, camara, enCoche ? vehiculo : null);
+    linterna.actualizar(dt, camara, enCoche ? vehiculo : null, herramientas);
     if (carretera) carretera.actualizar(camara.position, dt);
 
     cuaderno.reloj = tiempoJuego;
