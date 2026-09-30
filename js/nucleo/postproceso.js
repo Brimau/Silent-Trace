@@ -246,17 +246,18 @@
 
 
 
-      dibujar(camaraVista) {
+      dibujar(camaraVista, conOverlay) {
         const vista = camaraVista || camara;
         renderer.setRenderTarget(rtEscena);
         renderer.clear();
         renderer.render(escena, vista);
-        if (escenaOverlay.children.length > 0) {
+        // El overlay lleva las manos y la herramienta: solo se pinta con
+        // la camara del juego, nunca con la del menu.
+        if (conOverlay && escenaOverlay.children.length > 0) {
           const previo = renderer.autoClear;
           renderer.autoClear = false;
           renderer.clearDepth();
-          // el overlay (manos) solo se pinta en la camara del juego
-          if (!camaraVista) renderer.render(escenaOverlay, camaraOverlay);
+          renderer.render(escenaOverlay, camaraOverlay);
           renderer.autoClear = previo;
         }
 

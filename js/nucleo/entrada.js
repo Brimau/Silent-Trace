@@ -33,10 +33,13 @@
     let mirarX = 0;
     let mirarY = 0;
     let bloqueado = false;
+    // Solo mientras se juega se secuestran Tab y Espacio. Si no, el menu
+    // se queda sin navegacion por teclado.
+    let activo = false;
 
     function alPulsar(evento) {
       const codigo = evento.code;
-      if (codigo === 'Tab' || codigo === 'Space') evento.preventDefault();
+      if (activo && (codigo === 'Tab' || codigo === 'Space')) evento.preventDefault();
       if (!teclas.has(codigo)) pulsadas.add(codigo);
       teclas.add(codigo);
     }
@@ -91,6 +94,12 @@
         return { x, y };
       },
       limpiar() { pulsadas.clear(); soltadas.clear(); },
+      // Al empezar una partida se descarta lo tecleado en el menu.
+      setActivo(v) {
+        activo = !!v;
+        if (!activo) { pulsadas.clear(); soltadas.clear(); teclas.clear(); }
+      },
+      get activo() { return activo; },
       alBloquear(fn) { oyentesBloqueo.push(fn); },
       bloquear() {
         try {

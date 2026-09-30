@@ -209,7 +209,6 @@
       menuActivo = false;
       if (dom.inicio) dom.inicio.classList.add('oculto');
       if (dom.pausa) dom.pausa.classList.add('oculto');
-      dom.velo.classList.remove('fundido');
       dom.velo.classList.add('negro');
       dom.salida.classList.remove('oculto');
     }

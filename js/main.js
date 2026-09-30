@@ -199,11 +199,13 @@
         alGuardarSalida: function () { if (jugando) guardado.guardar('salida'); },
         alAbrirOpciones: sincronizarOpciones,
         alVolverAlMenu: function () {
+          if (entrada) entrada.setActivo(false);
           // la escena vuelve al coche parado del menu
           interfaz.refrescarPartida();
         },
         alEntrar: entrarEnJuego,
         alContinuar: function () {
+          if (entrada) entrada.setActivo(true);
           document.body.classList.add('jugando');
           document.body.classList.remove('pausado');
           el.hud.classList.remove('oculto');
@@ -237,6 +239,7 @@
       registrarModulosGuardado();
 
 
+
       listo = true;
       // el menu entra con el mundo ya construido: se ve el coche real
       interfaz.mostrarMenu();
@@ -250,6 +253,10 @@
 function entrarEnJuego(continuando) {
       jugando = true;
       conduciendo = true;
+      escala = 1;
+      aplicarOpciones();
+      // lo tecleado en el menu no debe disparar acciones al empezar
+      if (entrada) entrada.setActivo(true);
       // Continuar parte de un guardado existente.
       const datos = continuando ? guardado.leer() : null;
       let entroEnCoche = true;
@@ -283,7 +290,6 @@ function entrarEnJuego(continuando) {
       herramientas.setLinterna(false);
       el.hud.classList.remove('oculto');
       AUDIO.iniciar();
-      aplicarOpciones();
       bucle.arrancar();
       hud.objetivo(progresion.texto);
       hud.zona(progresion.zona || 'CARRETERA DEL BOSQUE');
@@ -444,7 +450,8 @@ function entrarEnJuego(continuando) {
       jugador.colocar(vehiculo.posicion.x - sen * fuera, vehiculo.posicion.z + cos * fuera);
       linterna.apagar();
       herramientas.setLinterna(false);
-      herramientas.guardar();
+      // a pie las herramientas vuelven solas; si no hay que pulsar R
+      herramientas.obtener();
       consejo('pie', '<b>W A S D</b> para moverte · <b>Ratón</b> para mirar');
       setTimeout(function () {
         if (jugando && !conduciendo) consejo('correr', '<b>Mayús</b> para correr');
@@ -659,7 +666,17 @@ function entrarEnJuego(continuando) {
       return;
     }
     if (!jugando) return;
-    if (interfaz && interfaz.enPausa()) return;
+    if (interfaz && interfaz.enPausa()) {
+      // Pausado: el mundo no avanza, pero la entrada si se consume. Si no
+      // se limpiara, las teclas pulsadas durante la pausa se dispararian
+      // al reanudar, y Esc no podria cerrar un panel abierto.
+      if (entrada.pulso('pausa')) {
+        if (interfaz.panelAbierto) interfaz.cerrarPanel();
+        else { interfaz.reanudar(); if (entrada) entrada.setActivo(true); }
+      }
+      entrada.limpiar();
+      return;
+    }
     tiempoJuego += dt;
     aplicarMirada();
 
@@ -937,12 +954,12 @@ function entrarEnJuego(continuando) {
       if (interfaz && !interfaz.enPausa()) {
         // el bucle sigue vivo: el mundo se ve detras, congelado
         el.hud.classList.add('oculto');
+        if (entrada) entrada.setActivo(false);
         document.body.classList.add('pausado');
         document.body.classList.remove('jugando');
         interfaz.pausar();
       }
     }
-    if (interfaz && interfaz.panelAbierto && entrada.pulso('herramienta')) interfaz.cerrarPanel();
     entrada.limpiar();
   }
 
@@ -950,8 +967,10 @@ function entrarEnJuego(continuando) {
     motor.renderer.info.reset();
     motor.post.preparar(delta, temblor, parpadeo);
     // pausado: se sigue pintando el mundo congelado, sin tocar el estado
-    const camaraActiva = interfaz && interfaz.esMenu() ? interfaz.camara : camara;
-    if (motor.post.activo) motor.post.dibujar(camaraActiva);
+    // en el menu se usa la camara cinematografica y no hay manos que pintar
+    const enMenu = interfaz && interfaz.esMenu();
+    const camaraActiva = enMenu ? interfaz.camara : camara;
+    if (motor.post.activo) motor.post.dibujar(camaraActiva, !enMenu);
     else motor.renderer.render(motor.escena, camaraActiva);
 
     if (!jugando) return;
@@ -961,7 +980,10 @@ function entrarEnJuego(continuando) {
       const fps = cuadrosFps / acumFps;
       if (fps < 34 && escala > 0.64) {
         escala = Math.max(0.64, escala - 0.16);
-        motor.pixelRatio = Math.max(0.6, CONFIG.calidades.media.pixelRatio * escala);
+        // La calidad que eligio el usuario es la base; la escala es solo
+        // la degradacion automatica. Antes se pisaban entre si.
+        const base = CONFIG.calidades.media.pixelRatio * opciones.calidad;
+        motor.pixelRatio = Math.max(0.6, base * escala);
       } else if (fps < 26) {
         bosque.ajustar(0.55);
       }
