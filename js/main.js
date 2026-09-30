@@ -236,6 +236,7 @@
 
       registrarModulosGuardado();
 
+
       listo = true;
       // el menu entra con el mundo ya construido: se ve el coche real
       interfaz.mostrarMenu();
@@ -533,7 +534,10 @@ function entrarEnJuego(continuando) {
     AUDIO.volumenGeneral(opciones.volumen);
     if (entrada) entrada.sensibilidad = CONFIG.camara.sensibilidad * opciones.sensibilidad;
     if (motor) {
-      motor.pixelRatio = Math.min(window.devicePixelRatio, CONFIG.calidades.media.pixelRatio * opciones.calidad);
+      // Un pixelRatio de 0 deja el lienzo sin tamaño y la pantalla en
+      // negro. El minimo se aplica aqui, no solo al cargar.
+      const ratio = CONFIG.calidades.media.pixelRatio * opciones.calidad;
+      motor.pixelRatio = Math.max(0.4, Math.min(2, ratio));
     }
   }
 
@@ -553,6 +557,13 @@ function entrarEnJuego(continuando) {
       opciones.volumen = Number(v.value) / 100;
       opciones.sensibilidad = Number(s.value) / 100;
       opciones.calidad = Number(c.value) / 100;
+      // topes en el sitio: un 0 en calidad dejaria la pantalla en negro
+      opciones.volumen = Math.max(0, Math.min(1, opciones.volumen));
+      opciones.sensibilidad = Math.max(0.2, Math.min(3, opciones.sensibilidad));
+      opciones.calidad = Math.max(0.4, Math.min(1, opciones.calidad));
+      v.value = String(Math.round(opciones.volumen * 100));
+      s.value = String(Math.round(opciones.sensibilidad * 100));
+      c.value = String(Math.round(opciones.calidad * 100));
       aplicarOpciones();
       try { localStorage.setItem(CLAVE_OPCIONES, JSON.stringify(opciones)); } catch (e) { /* sin espacio */ }
     }
@@ -568,10 +579,17 @@ function entrarEnJuego(continuando) {
     guardado.registrar({
       id: 'jugador',
       guardar() {
+        // Dentro del coche el jugador no tiene posicion propia: se
+        // guardaria en el origen del mundo y al volver se caeria ahi.
+        if (conduciendo) {
+          return {
+            x: vehiculo.posicion.x, y: vehiculo.posicion.y, z: vehiculo.posicion.z,
+            yaw: -vehiculo.direccion, pitch: 0, enCoche: true,
+          };
+        }
         return {
           x: jugador.posicion.x, y: jugador.posicion.y, z: jugador.posicion.z,
-          yaw: mirada.yaw, pitch: mirada.pitch,
-          enCoche: conduciendo,
+          yaw: mirada.yaw, pitch: mirada.pitch, enCoche: false,
         };
       },
       restaurar(d) {

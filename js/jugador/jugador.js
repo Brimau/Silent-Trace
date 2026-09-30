@@ -64,7 +64,11 @@
         deseada.addScaledVector(derecha, lateral * 0.78);
         const largo = Math.sqrt(deseada.x * deseada.x + deseada.z * deseada.z);
         if (largo > 0.001) {
-          const factor = Math.min(1, maxVel / largo);
+          // Hay que escalar a maxVel, no solo limitar: antes el factor era
+          // min(1, maxVel/largo) y como la direccion ya es unitaria el
+          // jugador se movia siempre a 1 m/s, tanto caminando como
+          // corriendo. Caminar y correr no se distinguian.
+          const factor = maxVel / largo;
           deseada.x *= factor;
           deseada.z *= factor;
         }
