@@ -166,6 +166,18 @@ body.pausado #lienzo { filter: blur(2px) brightness(0.82) saturate(0.85); }
 #consejo.visible { opacity: 1; }
 #consejo b { color: #b6beb7; font-weight: 400; }
 
+/* autoguardado: un aviso minimo, ni un segundo en pantalla */
+#guardado {
+  position: absolute; left: 50%; bottom: 8.5%;
+  transform: translateX(-50%);
+  font-size: 9px; letter-spacing: 0.36em; text-transform: uppercase;
+  color: #6f7871;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  white-space: nowrap;
+}
+#guardado.visible { opacity: 1; }
+
 /* ------------------------------------------------------------ MENU */
 #menu {
   position: fixed; inset: 0;
@@ -365,6 +377,93 @@ body.pausado #lienzo { filter: blur(2px) brightness(0.82) saturate(0.85); }
   font-size: 10.5px; letter-spacing: 0.26em; text-transform: uppercase;
   color: var(--apagado);
 }
+
+/* ------------------------------------------- confirmar / opciones */
+#confirmar, #panel-opciones {
+  position: fixed; inset: 0;
+  z-index: 13;
+  display: grid; place-items: center;
+  background: rgba(2, 4, 6, 0.9);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.42s ease;
+}
+#confirmar.visible, #panel-opciones.visible { opacity: 1; pointer-events: auto; }
+#confirmar.oculto { display: grid !important; opacity: 0; pointer-events: none; }
+
+#confirmar-caja, #panel-opciones-caja {
+  min-width: min(400px, 84vw);
+  text-align: left;
+}
+#confirmar h3, #panel-opciones h3 {
+  font-family: var(--serif);
+  font-size: 15px; font-weight: 400;
+  letter-spacing: 0.3em; text-transform: uppercase;
+  color: #dde1dc;
+  margin: 0 0 14px;
+}
+#confirmar .tenue {
+  font-size: 11px; line-height: 1.8; letter-spacing: 0.08em;
+  color: var(--apagado);
+  margin: 0 0 30px;
+}
+#confirmar-acciones { display: flex; gap: 26px; }
+#confirmar-acciones button {
+  background: none; border: 0;
+  padding: 6px 0;
+  font-family: var(--mono);
+  font-size: 10.5px; letter-spacing: 0.3em; text-transform: uppercase;
+  color: var(--apagado); cursor: pointer;
+  transition: color var(--punto);
+}
+#confirmar-acciones button:hover { color: #e4e8e2; }
+#confirmar-acciones button[data-accion="confirmar"] { color: #b3bab3; }
+#confirmar-acciones button[data-accion="confirmar"]:hover { color: #e4e8e2; }
+
+.opcion {
+  display: grid;
+  grid-template-columns: 11em 1fr;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 18px;
+}
+.opcion label {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: #b3bab3; text-align: right;
+}
+.opcion input[type="range"] {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 1px;
+  background: rgba(214,218,213,0.22);
+  outline: none; cursor: pointer;
+}
+.opcion input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 9px; height: 9px; border-radius: 50%;
+  background: #cdd2cb;
+  transition: transform var(--punto);
+}
+.opcion input[type="range"]::-moz-range-thumb {
+  width: 9px; height: 9px; border: 0; border-radius: 50%;
+  background: #cdd2cb;
+}
+.opcion input[type="range"]:hover::-webkit-slider-thumb { transform: scale(1.35); }
+
+#panel-opciones button {
+  margin-top: 26px;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid rgba(214,218,213,0.2);
+  padding: 6px 0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--apagado);
+  cursor: pointer;
+  transition: color var(--punto), border-color var(--punto);
+}
+#panel-opciones button:hover { color: #e4e8e2; border-color: rgba(214,218,213,0.6); }
 
 @media (max-width: 720px) {
   #menu-panel { left: 26px; max-width: 26ch; }

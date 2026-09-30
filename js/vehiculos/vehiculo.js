@@ -589,6 +589,33 @@
       alternarRadio() { estado.radioEncendido = !estado.radioEncendido; return estado.radioEncendido; },
       recogerCamara() { camaraCoche.visible = false; return true; },
       get tieneCamara() { return camaraCoche.visible; },
+      // para el autoguardado
+      guardar() {
+        return {
+          x: estado.posicion.x,
+          y: estado.posicion.y,
+          z: estado.posicion.z,
+          direccion: estado.direccion,
+          luces: estado.luces,
+          ocupante: estado.ocupado,
+          camara: camaraCoche.visible,
+        };
+      },
+      restaurar(d) {
+        if (!d) return;
+        if (typeof d.x === 'number') estado.posicion.set(d.x, d.y || 0, d.z || 0);
+        if (typeof d.direccion === 'number') estado.direccion = d.direccion;
+        if (typeof d.luces === 'boolean') estado.luces = d.luces;
+        if (typeof d.camara === 'boolean') camaraCoche.visible = d.camara;
+        estado.ocupado = false;
+        estado.velocidad = 0;
+        estado.velocidadLateral = 0;
+        estado.giro = 0;
+        estado.posicion.y = asentar();
+        aplicarPose();
+        actualizarLuces(false);
+        actualizarManosVolante(0);
+      },
       faros: { izq: faroIzq, der: faroDer, largo: faroLargo, derrame: derrame },
       medidas: { L: L, A: A, R: R, altura: V.altura },
     };

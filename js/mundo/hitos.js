@@ -89,6 +89,30 @@
           figura.rotation.z = Math.sin(performance.now() / 1100) * 0.04;
         }
       },
+
+      // Los hitos ya consumidos no deben repetirse al cargar una partida.
+      guardar() {
+        const lista = [];
+        for (const h of porDistancia) if (h.hecho) lista.push(h.def.id);
+        for (const a of porLugar) if (a.hecho) lista.push(a.def.id);
+        return { vistos: lista };
+      },
+
+      restaurar(d) {
+        if (!d || !d.vistos) return;
+        const vistos = d.vistos;
+        for (const h of porDistancia) {
+          if (vistos.indexOf(h.def.id) < 0) continue;
+          h.hecho = true;
+          if (h.def.sonido) eventos.sonido(h.def.sonido);
+        }
+        for (const a of porLugar) {
+          if (vistos.indexOf(a.def.id) < 0) continue;
+          a.hecho = true;
+          a.visible = false;
+          if (a.nodo) a.nodo.visible = false;
+        }
+      },
     };
   };
 })(window.J = window.J || {});

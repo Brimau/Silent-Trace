@@ -41,6 +41,9 @@
       lema: document.getElementById('lema'),
       acciones: document.getElementById('menu-acciones'),
       panel: document.getElementById('panel-controles'),
+      opciones: document.getElementById('panel-opciones'),
+      confirmar: document.getElementById('confirmar'),
+      resumen: document.getElementById('menu-partida'),
       pausa: document.getElementById('pausa'),
       pausaAcciones: document.getElementById('pausa-acciones'),
       velo: document.getElementById('velo'),
@@ -52,8 +55,10 @@
     let tiempo = 0;
     let tiempoMenu = 0;
     let panelAbierto = false;
+    let panelActual = null;
     let pendienteInicio = false;
     let menuActivo = false;
+    let hayPartida = false;
 
     // ------------------------------------------- camara cinematografica
     const camara = new THREE.PerspectiveCamera(38, 1, 0.08, 620);
@@ -185,12 +190,17 @@
 
     function arrancarEnlace() {
       panelAbierto = false;
+      panelActual = null;
       dom.panel.classList.remove('visible');
+      if (dom.opciones) dom.opciones.classList.remove('visible');
     }
 
-    function abrirPanel() {
+    function abrirPanel(cual) {
       panelAbierto = true;
-      dom.panel.classList.add('visible');
+      panelActual = cual;
+      dom.panel.classList.toggle('visible', cual === 'controles');
+      if (dom.opciones) dom.opciones.classList.toggle('visible', cual === 'opciones');
+      if (cual === 'opciones' && cfg.alAbrirOpciones) cfg.alAbrirOpciones();
     }
 
     function salir() {
@@ -207,6 +217,8 @@
     function volverAlMenu() {
       estado = ESTADOS.MENU;
       menuActivo = true;
+      // al abandonar la partida se guarda lo que haya
+      if (cfg.alGuardarSalida) cfg.alGuardarSalida();
       if (audio && audio.activo) audio.portazo();
       dom.pausa.classList.add('oculto');
       dom.inicio.classList.remove('oculto', 'saliendo');
@@ -216,12 +228,20 @@
       document.body.classList.remove('pausado');
       // el coche vuelve a estar parado con los faros encendidos
       if (vehiculo && cfg.alPausar) cfg.alPausar();
+      if (cfg.alVolverAlMenu) cfg.alVolverAlMenu();
     }
 
-    function nuevaPartida() {
+    function nuevaPartida(forzar) {
       if (estado !== ESTADOS.MENU || pendienteInicio) return;
+      // no se pisa una partida guardada sin preguntar
+      if (!forzar && hayPartida && cfg.hayGuardado()) {
+        dom.confirmar.classList.remove('oculto');
+        if (audio && audio.activo) audio.interferencia();
+        return;
+      }
       pendienteInicio = true;
       if (audio && audio.activo) audio.portazo();
+      if (cfg.alBorrarGuardado) cfg.alBorrarGuardado();
       dom.inicio.classList.add('saliendo');
       // fundido a negro corto y arranque
       setTimeout(function () {
@@ -232,7 +252,25 @@
           pendienteInicio = false;
           dom.inicio.classList.add('oculto');
           dom.velo.classList.remove('negro');
-          if (cfg.alEntrar) cfg.alEntrar();
+          if (cfg.alEntrar) cfg.alEntrar(false);
+        }, 520);
+      }, 420);
+    }
+
+    function continuarPartida() {
+      if (estado !== ESTADOS.MENU || pendienteInicio) return;
+      pendienteInicio = true;
+      if (audio && audio.activo) audio.portazo();
+      dom.inicio.classList.add('saliendo');
+      setTimeout(function () {
+        dom.velo.classList.add('negro');
+        setTimeout(function () {
+          estado = ESTADOS.JUEGO;
+          menuActivo = false;
+          pendienteInicio = false;
+          dom.inicio.classList.add('oculto');
+          dom.velo.classList.remove('negro');
+          if (cfg.alEntrar) cfg.alEntrar(true);
         }, 520);
       }, 420);
     }
@@ -254,14 +292,25 @@
         if (panelAbierto) return;
         marcarActivo(b);
         const accion = b.dataset.accion;
-        if (accion === 'nueva') nuevaPartida();
-        else if (accion === 'controles') abrirPanel();
+        if (accion === 'nueva') nuevaPartida(false);
+        else if (accion === 'seguir') continuarPartida();
+        else if (accion === 'controles') abrirPanel('controles');
+        else if (accion === 'opciones') abrirPanel('opciones');
         else if (accion === 'salir') salir();
       });
       dom.acciones.addEventListener('mousemove', function (ev) {
         const b = ev.target.closest('button');
         if (b && !panelAbierto) marcarActivo(b);
       });
+      if (dom.confirmar) {
+        dom.confirmar.addEventListener('click', function (ev) {
+          const b = ev.target.closest('button');
+          if (!b) return;
+          if (audio && audio.activo) audio.interferencia();
+          dom.confirmar.classList.add('oculto');
+          if (b.dataset.accion === 'confirmar') nuevaPartida(true);
+        });
+      }
     }
 
     function conectarPausa() {
@@ -272,19 +321,21 @@
         if (audio && audio.activo) audio.interferencia();
         const accion = b.dataset.accion;
         if (accion === 'seguir') continuar();
-        else if (accion === 'controles') abrirPanel();
+        else if (accion === 'controles') abrirPanel('controles');
+        else if (accion === 'opciones') abrirPanel('opciones');
         else if (accion === 'menu') volverAlMenu();
       });
     }
 
     function conectarPanel() {
-      if (!dom.panel) return;
-      dom.panel.addEventListener('click', function (ev) {
+      const cerrar = function (ev) {
         const b = ev.target.closest('button');
         if (!b) return;
         if (audio && audio.activo) audio.interferencia();
         arrancarEnlace();
-      });
+      };
+      if (dom.panel) dom.panel.addEventListener('click', cerrar);
+      if (dom.opciones) dom.opciones.addEventListener('click', cerrar);
     }
 
     conectarMenu();
@@ -325,6 +376,30 @@
         colocarCamara(0);
         // una pasada de update en reposo enciende los focos reales
         vehiculo.actualizar(1 / 60, null, false);
+        this.refrescarPartida();
+      },
+
+// muestra CONTINUAR si hay algo que continuar
+      refrescarPartida() {
+        hayPartida = !!(cfg.hayGuardado && cfg.hayGuardado());
+        const boton = dom.acciones ? dom.acciones.querySelector('[data-accion="seguir"]') : null;
+        if (boton) boton.classList.toggle('oculto', !hayPartida);
+        if (dom.resumen) {
+          if (!hayPartida) {
+            dom.resumen.classList.add('oculto');
+          } else {
+            const r = cfg.resumenGuardado ? cfg.resumenGuardado() : null;
+            let texto = '';
+            if (r) {
+              const fecha = new Date(r.marca);
+              const hh = String(fecha.getHours()).padStart(2, '0');
+              const mm = String(fecha.getMinutes()).padStart(2, '0');
+              texto = 'Guardado · ' + (r.zona || 'carretera') + ' · ' + hh + ':' + mm;
+            }
+            dom.resumen.textContent = texto;
+            dom.resumen.classList.toggle('oculto', !texto);
+          }
+        }
       },
 
       pausar() {

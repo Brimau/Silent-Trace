@@ -30,6 +30,7 @@
   </div>
   <div id="consejo"></div>
   <div id="brindis"></div>
+  <div id="guardado">PARTIDA GUARDADA</div>
 </div>
 
 <!-- ------------------------------------------------------------ MENU -->
@@ -39,10 +40,45 @@
     <h1 id="titulo">SILENT<span>TRACE</span></h1>
     <p id="lema">Cada rastro lleva a algún sitio</p>
     <nav id="menu-acciones">
+      <button type="button" data-accion="seguir" class="oculto">Continuar</button>
       <button type="button" data-accion="nueva">Nueva partida</button>
       <button type="button" data-accion="controles">Controles</button>
+      <button type="button" data-accion="opciones">Opciones</button>
       <button type="button" data-accion="salir">Salir</button>
     </nav>
+    <p id="menu-partida" class="oculto"></p>
+  </div>
+</div>
+
+<!-- ------------------------------------------- CONFIRMAR NUEVA PARTIDA -->
+<div id="confirmar" class="oculto">
+  <div id="confirmar-caja">
+    <h3>¿Empezar una nueva partida?</h3>
+    <p class="tenue">Se reemplazará el progreso guardado actual.</p>
+    <div id="confirmar-acciones">
+      <button type="button" data-accion="cancelar">Cancelar</button>
+      <button type="button" data-accion="confirmar">Continuar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ---------------------------------------------------------- OPCIONES -->
+<div id="panel-opciones">
+  <div id="panel-opciones-caja">
+    <h3>Opciones</h3>
+    <div class="opcion">
+      <label for="opt-volumen">Volumen</label>
+      <input type="range" id="opt-volumen" min="0" max="100" value="80">
+    </div>
+    <div class="opcion">
+      <label for="opt-sensibilidad">Sensibilidad</label>
+      <input type="range" id="opt-sensibilidad" min="20" max="300" value="100">
+    </div>
+    <div class="opcion">
+      <label for="opt-calidad">Calidad</label>
+      <input type="range" id="opt-calidad" min="0" max="100" value="100">
+    </div>
+    <button type="button" data-accion="cerrar">Volver</button>
   </div>
 </div>
 
@@ -53,6 +89,7 @@
     <nav id="pausa-acciones">
       <button type="button" data-accion="seguir">Continuar</button>
       <button type="button" data-accion="controles">Controles</button>
+      <button type="button" data-accion="opciones">Opciones</button>
       <button type="button" data-accion="menu">Salir al menú</button>
     </nav>
   </div>
@@ -125,6 +162,7 @@
 <script src="js/sistemas/manos.js"></script>
 <script src="js/sistemas/herramientas.js"></script>
 <script src="js/sistemas/interfaz.js"></script>
+<script src="js/sistemas/guardado.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

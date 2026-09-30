@@ -7,6 +7,7 @@
     lienzo: document.getElementById('lienzo'),
     hud: document.getElementById('hud'),
     hudArriba: document.getElementById('hud-arriba'),
+    guardado: document.getElementById('guardado'),
     carga: document.getElementById('carga'),
     velocimetro: document.getElementById('velocimetro'),
     objetivo: document.getElementById('objetivo'),
@@ -21,6 +22,7 @@
 
   const AUDIO = J.crearAudio();
   const progresion = J.crearProgresion();
+  const guardado = J.crearGuardado({ clave: 'silent-trace:partida' });
   const C = CONFIG.camara;
 
   const cuaderno = {
@@ -52,9 +54,11 @@
   let conduciendo = false;
   let interfaz = null;
   let hudTemporizador = 0;
+  let ultimaZona = '';
   let transicion = -1;
   let origenCamara = null;
   let temporizadorBrindis = 0;
+  let temporizadorGuardado = 0;
   let parpadeo = 0;
   let temblor = 0;
   let tiempoJuego = 0;
@@ -101,6 +105,10 @@
       el.brindis.textContent = texto;
       el.brindis.classList.add('visible');
       temporizadorBrindis = 7;
+    },
+    guardado() {
+      el.guardado.classList.add('visible');
+      temporizadorGuardado = 1.1;
     },
     velocidad(kmh) {
       el.velocimetro.classList.toggle('oculto', kmh === null);
@@ -185,6 +193,15 @@
         vehiculo: vehiculo,
         camara: camara,
         audio: AUDIO,
+        hayGuardado: function () { return guardado.existe(); },
+        resumenGuardado: function () { return guardado.resumen(); },
+        alBorrarGuardado: function () { guardado.borrar(); },
+        alGuardarSalida: function () { if (jugando) guardado.guardar('salida'); },
+        alAbrirOpciones: sincronizarOpciones,
+        alVolverAlMenu: function () {
+          // la escena vuelve al coche parado del menu
+          interfaz.refrescarPartida();
+        },
         alEntrar: entrarEnJuego,
         alContinuar: function () {
           document.body.classList.add('jugando');
@@ -217,6 +234,8 @@
 
       bucle = J.crearBucle(actualizar, dibujar, 1 / 60, 5);
 
+      registrarModulosGuardado();
+
       listo = true;
       // el menu entra con el mundo ya construido: se ve el coche real
       interfaz.mostrarMenu();
@@ -227,28 +246,60 @@
     }
   }
 
-  function entrarEnJuego() {
-    jugando = true;
-    conduciendo = true;
-    vehiculo.estado.ocupado = true;
-    // el jugador arranca sentado, mirando al frente del coche
-    cab.yaw = -vehiculo.direccion;
-    cab.localYaw = 0;
-    cab.localPitch = 0;
-    cab.roll = 0;
-    mirada.yaw = cab.yaw;
-    mirada.pitch = 0;
-    el.hud.classList.remove('oculto');
-    AUDIO.iniciar();
-    bucle.arrancar();
-    hud.objetivo(progresion.texto);
-    hud.zona('CARRETERA DEL BOSQUE');
-    hud.brindis('03:40. Valdehoyos, doce kilómetros. No hay nadie más en la carretera.');
-    hudTemporizador = 7;
-    entrada.bloquear();
-    setTimeout(function () { if (jugando) AUDIO.grillos(); }, 5000);
-    setTimeout(function () { if (jugando) AUDIO.buho(); }, 17000);
-  }
+function entrarEnJuego(continuando) {
+      jugando = true;
+      conduciendo = true;
+      // Continuar parte de un guardado existente.
+      const datos = continuando ? guardado.leer() : null;
+      let entroEnCoche = true;
+      let jugadorRestaurado = false;
+      if (datos && datos.modulos) {
+        guardado.aplicar(datos.modulos);
+        const j = datos.modulos.jugador;
+        if (j && typeof j.x === 'number') {
+          jugadorRestaurado = true;
+          entroEnCoche = !!j.enCoche;
+        }
+      }
+      vehiculo.estado.ocupado = entroEnCoche;
+      conduciendo = entroEnCoche;
+      if (!jugadorRestaurado) {
+        // Sin posicion guardada: se coloca junto al coche. Si no, el
+        // jugador se queda en el origen del mundo y eso es lo que se
+        // guardaria en la siguiente escritura.
+        const fuera = CONFIG.vehiculo.largo * 0.5 + 1.0;
+        const sen = Math.sin(vehiculo.direccion);
+        const cos = Math.cos(vehiculo.direccion);
+        jugador.colocar(vehiculo.posicion.x - sen * fuera, vehiculo.posicion.z + cos * fuera);
+      }
+      cab.yaw = -vehiculo.direccion;
+      cab.localYaw = 0;
+      cab.localPitch = 0;
+      cab.roll = 0;
+      mirada.yaw = cab.yaw;
+      mirada.pitch = 0;
+      linterna.apagar();
+      herramientas.setLinterna(false);
+      el.hud.classList.remove('oculto');
+      AUDIO.iniciar();
+      aplicarOpciones();
+      bucle.arrancar();
+      hud.objetivo(progresion.texto);
+      hud.zona(progresion.zona || 'CARRETERA DEL BOSQUE');
+      if (!continuando) {
+        hud.brindis('03:40. Valdehoyos, doce kilómetros. No hay nadie más en la carretera.');
+        ultimaZona = 'CARRETERA DEL BOSQUE';
+      } else {
+        hud.brindis('Vuelvo donde lo deje.');
+      }
+      hudTemporizador = 7;
+      el.hudArriba.classList.remove('temporal');
+      entrada.bloquear();
+      if (!continuando) {
+        setTimeout(function () { if (jugando) AUDIO.grillos(); }, 5000);
+        setTimeout(function () { if (jugando) AUDIO.buho(); }, 17000);
+      }
+    }
 
   // el lienzo solo sirve para retomar el control cuando se ha perdido el cursor
   el.lienzo.addEventListener('click', function () {
@@ -384,6 +435,8 @@
       vehiculo.estacionar();
       vehiculo.estado.ocupado = false;
       conduciendo = false;
+      // bajar del coche en un punto cualquiera es un buen momento
+      if (guardado) guardado.guardarPronto('bajada');
       const sen = Math.sin(vehiculo.direccion);
       const cos = Math.cos(vehiculo.direccion);
       const fuera = CONFIG.vehiculo.largo * 0.5 + 1.0;
@@ -414,8 +467,7 @@
   }
 
   function anotarEvidencia(etiqueta) {
-    const yaEsta = cuaderno.evidencias.indexOf(etiqueta);
-    if (yaEsta >= 0) return;
+    if (cuaderno.evidencias.indexOf(etiqueta) >= 0) return;
     let texto = etiqueta;
     if (etiqueta.indexOf('coche') >= 0) texto = 'Vehículo abandonado en la carretera';
     else if (etiqueta.indexOf('cartel') >= 0) texto = 'Cartel de Valdehoyos';
@@ -426,6 +478,8 @@
     else if (etiqueta.indexOf('edificio') >= 0) texto = 'Edificio con la puerta cerrada';
     else return;
     cuaderno.evidencias.push(texto);
+    // pista nueva: momento seguro de guardado
+    if (guardado) guardado.guardar('pista');
   }
 
   function cercaDelCoche() {
@@ -452,7 +506,118 @@
     } else if (objeto.equipo === 'libreta') {
       consejo('libreta', 'Libreta en el bolsillo. <b>R</b> para revisarla.');
     }
+    // hallazgo importante: punto seguro de guardado
+    if (guardado) guardado.guardar('objeto');
     return true;
+  }
+
+  // ------------------------------------------------------ opciones
+  // Tres ajustes que el juego ya tiene: nada de botones falsos.
+  const CLAVE_OPCIONES = 'silent-trace:opciones';
+  const opciones = { volumen: 0.8, sensibilidad: 1, calidad: 1 };
+
+  function cargarOpciones() {
+    try {
+      const crudo = localStorage.getItem(CLAVE_OPCIONES);
+      if (!crudo) return;
+      const d = JSON.parse(crudo);
+      if (typeof d.volumen === 'number') opciones.volumen = Math.max(0, Math.min(1, d.volumen));
+      if (typeof d.sensibilidad === 'number') opciones.sensibilidad = Math.max(0.2, Math.min(3, d.sensibilidad));
+      if (typeof d.calidad === 'number') opciones.calidad = Math.max(0.4, Math.min(1, d.calidad));
+    } catch (e) {
+      // sin opciones guardadas: los valores por defecto ya estan puestos
+    }
+  }
+
+  function aplicarOpciones() {
+    AUDIO.volumenGeneral(opciones.volumen);
+    if (entrada) entrada.sensibilidad = CONFIG.camara.sensibilidad * opciones.sensibilidad;
+    if (motor) {
+      motor.pixelRatio = Math.min(window.devicePixelRatio, CONFIG.calidades.media.pixelRatio * opciones.calidad);
+    }
+  }
+
+  function sincronizarOpciones() {
+    const v = document.getElementById('opt-volumen');
+    const s = document.getElementById('opt-sensibilidad');
+    const c = document.getElementById('opt-calidad');
+    if (!v || !s || !c) return;
+    v.value = String(Math.round(opciones.volumen * 100));
+    s.value = String(Math.round(opciones.sensibilidad * 100));
+    c.value = String(Math.round(opciones.calidad * 100));
+    if (v.dataset.listo) return;
+    v.dataset.listo = '1';
+    s.dataset.listo = '1';
+    c.dataset.listo = '1';
+    function guardar() {
+      opciones.volumen = Number(v.value) / 100;
+      opciones.sensibilidad = Number(s.value) / 100;
+      opciones.calidad = Number(c.value) / 100;
+      aplicarOpciones();
+      try { localStorage.setItem(CLAVE_OPCIONES, JSON.stringify(opciones)); } catch (e) { /* sin espacio */ }
+    }
+    for (const el2 of [v, s, c]) el2.addEventListener('input', guardar);
+  }
+
+  cargarOpciones();
+
+  // ------------------------------------------------------ autoguardado
+  // Cada sistema aporta su trozo. Añadir capitulos, puertas, capitulos
+  // narrativos o decisiones mas adelante es registrar otro modulo aqui.
+  function registrarModulosGuardado() {
+    guardado.registrar({
+      id: 'jugador',
+      guardar() {
+        return {
+          x: jugador.posicion.x, y: jugador.posicion.y, z: jugador.posicion.z,
+          yaw: mirada.yaw, pitch: mirada.pitch,
+          enCoche: conduciendo,
+        };
+      },
+      restaurar(d) {
+        if (typeof d.x !== 'number') return;
+        jugador.colocar(d.x, d.z);
+        mirada.yaw = typeof d.yaw === 'number' ? d.yaw : 0;
+        mirada.pitch = typeof d.pitch === 'number' ? d.pitch : 0;
+        cab.yaw = mirada.yaw;
+        cab.localYaw = 0;
+        cab.localPitch = 0;
+        cab.roll = 0;
+      },
+    });
+
+    guardado.registrar({ id: 'vehiculo', guardar: function () { return vehiculo.guardar(); }, restaurar: function (d) { vehiculo.restaurar(d); } });
+    guardado.registrar({ id: 'progresion', guardar: function () { return progresion.guardar(); }, restaurar: function (d) { progresion.restaurar(d); } });
+    guardado.registrar({ id: 'hitos', guardar: function () { return hitos.guardar(); }, restaurar: function (d) { hitos.restaurar(d); } });
+
+    guardado.registrar({
+      id: 'herramientas',
+      guardar() {
+        return { equipo: { linterna: equipo.linterna, camara: equipo.camara, libreta: equipo.libreta }, actual: herramientas.actual };
+      },
+      restaurar(d) {
+        if (!d || !d.equipo) return;
+        equipo.camara = !!d.equipo.camara;
+        equipo.libreta = !!d.equipo.libreta;
+        herramientas.fijarDisponibles(listaEquipo());
+        if (d.actual) herramientas.seleccionar(d.actual);
+      },
+    });
+
+    guardado.registrar({
+      id: 'cuaderno',
+      guardar() {
+        return { evidencias: cuaderno.evidencias.slice(), reloj: cuaderno.reloj, nota: cuaderno.nota };
+      },
+      restaurar(d) {
+        if (!d) return;
+        if (Array.isArray(d.evidencias)) cuaderno.evidencias = d.evidencias.slice();
+        if (typeof d.reloj === 'number') cuaderno.reloj = d.reloj;
+        if (typeof d.nota === 'string') cuaderno.nota = d.nota;
+      },
+    });
+
+    guardado.alGuardar(function () { hud.guardado(); });
   }
 
   function aplicarMirada() {
@@ -564,8 +729,17 @@
       const cerca = caminos.consultar(vehiculo.posicion.x, vehiculo.posicion.z);
       const s = cerca.camino === caminos.porId.carretera ? cerca.s : 0;
       const objetivo = progresion.objetivoActual();
-      if (s >= objetivo.s && progresion.avanzar()) hud.objetivo(progresion.texto);
-      hud.zona(s > 1392 ? 'VALDEHOYOS' : (s > 1150 ? 'CARRETERA DE VALDEHOYOS' : 'CARRETERA DEL BOSQUE'));
+      if (s >= objetivo.s && progresion.avanzar()) {
+        hud.objetivo(progresion.texto);
+        if (guardado) guardado.guardar('objetivo');
+      }
+      const zona = s > 1392 ? 'VALDEHOYOS' : (s > 1150 ? 'CARRETERA DE VALDEHOYOS' : 'CARRETERA DEL BOSQUE');
+      hud.zona(zona);
+      // cambio de zona: un guardado, no uno por frame
+      if (zona !== ultimaZona) {
+        ultimaZona = zona;
+        if (guardado) guardado.guardarPronto('zona');
+      }
       hitos.actualizar(vehiculo.posicion);
     } else {
       hitos.actualizar(jugador.posicion);
@@ -683,6 +857,11 @@
       if (temporizadorConsejo <= 0) el.consejo.classList.remove('visible');
     }
 
+    if (temporizadorGuardado > 0) {
+      temporizadorGuardado -= dt;
+      if (temporizadorGuardado <= 0) el.guardado.classList.remove('visible');
+    }
+
     if (enCoche) {
       AUDIO.motor(info.rpm, info.acelerando, true);
       vehiculo.estado.radioRuido = vehiculo.radioEncendido ? (azar() < 0.03 ? 0.85 : azar() * 0.45) : 0;
@@ -728,6 +907,9 @@
       hudTemporizador -= dt;
       if (hudTemporizador <= 0) el.hudArriba.classList.add('temporal');
     }
+
+    // ejecuta los guardados que se agruparon por intervalo
+    if (guardado) guardado.vaciar();
 
     sanearCamara();
     // Esc pausa directamente: no depende de que el navegador conceda el

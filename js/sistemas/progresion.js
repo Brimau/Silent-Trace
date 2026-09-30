@@ -24,6 +24,15 @@
       },
       objetivoActual() { return objetivos[estado.indice]; },
       setZona(z) { estado.zona = z || ''; },
+      // para el autoguardado
+      guardar() { return { indice: estado.indice, zona: estado.zona }; },
+      restaurar(d) {
+        if (!d) return;
+        const i = d.indice | 0;
+        estado.indice = i >= 0 && i < objetivos.length ? i : 0;
+        estado.texto = objetivos[estado.indice].texto;
+        estado.zona = d.zona || '';
+      },
     };
   };
 })(window.J = window.J || {});
