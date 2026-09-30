@@ -13,6 +13,9 @@
 <div id="neblina"></div>
 <div id="sangria"></div>
 
+<!-- velo: fundidos de transicion y velo de pausa -->
+<div id="velo"></div>
+
 <div id="hud" class="oculto">
   <div id="hud-arriba">
     <div id="objetivo"></div>
@@ -29,27 +32,60 @@
   <div id="brindis"></div>
 </div>
 
-  <div id="inicio">
-    <div id="inicio-ambiente"></div>
-    <div id="inicio-caja">
-      <p id="carga">Cargando el bosque…</p>
-      <h1 id="titulo">SILENT TRACE</h1>
-      <p id="lema">Una investigación que nunca debió comenzar.</p>
-      <div id="inicio-acciones">
-        <button id="comenzar" disabled>COMENZAR</button>
-        <button id="alternar-controles" type="button">CONTROLES</button>
-      </div>
-      <ul id="pistas" class="oculto">
-        <li><b>W A S D</b> conducir / caminar</li>
-        <li><b>Ratón</b> mirar</li>
-        <li><b>Mayús</b> correr</li>
-        <li><b>E</b> interactuar · entrar y salir del coche</li>
-        <li><b>R</b> herramienta · <b>G</b> fotografía · <b>Tab</b> libreta</li>
-        <li><b>L</b> faros · <b>F</b> linterna · <b>Espacio</b> freno</li>
-        <li><b>Esc</b> liberar el cursor</li>
-      </ul>
-    </div>
+<!-- ------------------------------------------------------------ MENU -->
+<div id="menu">
+  <div id="menu-panel">
+    <p id="carga">Cargando el bosque…</p>
+    <h1 id="titulo">SILENT<span>TRACE</span></h1>
+    <p id="lema">Cada rastro lleva a algún sitio</p>
+    <nav id="menu-acciones">
+      <button type="button" data-accion="nueva">Nueva partida</button>
+      <button type="button" data-accion="controles">Controles</button>
+      <button type="button" data-accion="salir">Salir</button>
+    </nav>
   </div>
+</div>
+
+<!-- ------------------------------------------------------------ PAUSA -->
+<div id="pausa" class="oculto">
+  <div id="pausa-panel">
+    <h2 id="pausa-titulo">PAUSA</h2>
+    <nav id="pausa-acciones">
+      <button type="button" data-accion="seguir">Continuar</button>
+      <button type="button" data-accion="controles">Controles</button>
+      <button type="button" data-accion="menu">Salir al menú</button>
+    </nav>
+  </div>
+</div>
+
+<!-- -------------------------------------------------------- CONTROLES -->
+<div id="panel-controles">
+  <div id="panel-controles-caja">
+    <h3>Controles</h3>
+    <dl>
+      <dt>W A S D</dt><dd>conducir / caminar</dd>
+      <dt>Ratón</dt><dd>mirar</dd>
+      <dt>Mayús</dt><dd>correr</dd>
+      <dt>Espacio</dt><dd>freno · freno de mano</dd>
+      <dt>E</dt><dd>interactuar · entrar y salir del coche</dd>
+      <dt>R</dt><dd>cambiar de herramienta</dd>
+      <dt>G</dt><dd>hacer una fotografía</dd>
+      <dt>Tab</dt><dd>revisar la libreta</dd>
+      <dt>L</dt><dd>faros · sólo desde el asiento</dd>
+      <dt>F</dt><dd>linterna</dd>
+      <dt>M</dt><dd>radio</dd>
+      <dt>C</dt><dd>claxon</dd>
+      <dt>P</dt><dd>efecto cinematográfico</dd>
+      <dt>Esc</dt><dd>liberar el cursor</dd>
+    </dl>
+    <button type="button" data-accion="cerrar">Volver</button>
+  </div>
+</div>
+
+<div id="salida" class="oculto">
+  <p>SILENT TRACE</p>
+  <p class="tenue">puedes cerrar esta pestaña</p>
+</div>
 
 
 <noscript>
@@ -88,6 +124,7 @@
 <script src="js/sistemas/progresion.js"></script>
 <script src="js/sistemas/manos.js"></script>
 <script src="js/sistemas/herramientas.js"></script>
+<script src="js/sistemas/interfaz.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

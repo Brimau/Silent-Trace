@@ -6,19 +6,14 @@
   const el = {
     lienzo: document.getElementById('lienzo'),
     hud: document.getElementById('hud'),
-    inicio: document.getElementById('inicio'),
-    inicioCaja: document.getElementById('inicio-caja'),
+    hudArriba: document.getElementById('hud-arriba'),
     carga: document.getElementById('carga'),
-    comenzar: document.getElementById('comenzar'),
-    pistas: document.getElementById('pistas'),
-    alternarControles: document.getElementById('alternar-controles'),
-    titulo: document.getElementById('titulo'),
+    velocimetro: document.getElementById('velocimetro'),
     objetivo: document.getElementById('objetivo'),
     zona: document.getElementById('zona'),
     mira: document.getElementById('mira'),
     prompt: document.getElementById('prompt'),
     promptTexto: document.getElementById('prompt-texto'),
-    velocimetro: document.getElementById('velocimetro'),
     velocidad: document.getElementById('velocidad'),
     consejo: document.getElementById('consejo'),
     brindis: document.getElementById('brindis'),
@@ -55,6 +50,8 @@
   let listo = false;
   let jugando = false;
   let conduciendo = false;
+  let interfaz = null;
+  let hudTemporizador = 0;
   let transicion = -1;
   let origenCamara = null;
   let temporizadorBrindis = 0;
@@ -182,62 +179,80 @@
       herramientas.fijarDisponibles(listaEquipo());
       herramientas.setLinterna(false);
 
-      entrada = J.crearEntrada(el.lienzo);
-      let bloqueadoAntes = false;
-      entrada.alBloquear(function (bloqueado) {
-        document.body.classList.toggle('jugando', bloqueado && jugando);
-        if (bloqueado) {
-          bloqueadoAntes = true;
+      // ---- interfaz: menu cinematografico y pausa
+      interfaz = J.crearInterfaz({
+        escena: escena,
+        vehiculo: vehiculo,
+        camara: camara,
+        audio: AUDIO,
+        alEntrar: entrarEnJuego,
+        alContinuar: function () {
+          document.body.classList.add('jugando');
+          document.body.classList.remove('pausado');
           el.hud.classList.remove('oculto');
-          el.inicio.classList.add('fundido');
+          entrada.bloquear();
+        },
+        alPausar: function () {
+          conduciendo = false;
+          vehiculo.estado.ocupado = false;
+          vehiculo.estacionar();
+        },
+      });
+
+      entrada = J.crearEntrada(el.lienzo);
+      entrada.alBloquear(function (bloqueado) {
+        if (bloqueado) {
+          document.body.classList.add('jugando');
+          document.body.classList.remove('pausado');
+          el.hud.classList.remove('oculto');
           bucle.arrancar();
-        } else if (jugando && bloqueadoAntes) {
-          bloqueadoAntes = false;
+        } else if (jugando && interfaz && !interfaz.enPausa()) {
+          // se perdio el cursor por otra via (cambio de pestana)
+          document.body.classList.remove('jugando');
+          document.body.classList.add('pausado');
           el.hud.classList.add('oculto');
-          el.inicio.classList.remove('fundido');
-          el.titulo.textContent = 'PAUSA';
-          el.carga.textContent = '';
-          el.pistas.classList.add('oculto');
-          el.comenzar.disabled = false;
-          el.comenzar.textContent = 'CONTINUAR';
-          bucle.parar();
+          interfaz.pausar();
         }
       });
 
       bucle = J.crearBucle(actualizar, dibujar, 1 / 60, 5);
 
       listo = true;
-      el.comenzar.disabled = false;
-      el.carga.textContent = '';
+      // el menu entra con el mundo ya construido: se ve el coche real
+      interfaz.mostrarMenu();
+      bucle.arrancar();
     } catch (error) {
       el.carga.textContent = 'Error al construir el mundo: ' + error.message;
-      el.comenzar.disabled = true;
       throw error;
     }
   }
 
-  el.alternarControles.addEventListener('click', function () {
-    el.pistas.classList.toggle('oculto');
-  });
-
-  function comenzar() {
-    if (!listo) return;
-    el.inicio.classList.add('fundido');
-    el.hud.classList.remove('oculto');
+  function entrarEnJuego() {
     jugando = true;
+    conduciendo = true;
+    vehiculo.estado.ocupado = true;
+    // el jugador arranca sentado, mirando al frente del coche
+    cab.yaw = -vehiculo.direccion;
+    cab.localYaw = 0;
+    cab.localPitch = 0;
+    cab.roll = 0;
+    mirada.yaw = cab.yaw;
+    mirada.pitch = 0;
+    el.hud.classList.remove('oculto');
     AUDIO.iniciar();
     bucle.arrancar();
     hud.objetivo(progresion.texto);
     hud.zona('CARRETERA DEL BOSQUE');
     hud.brindis('03:40. Valdehoyos, doce kilómetros. No hay nadie más en la carretera.');
+    hudTemporizador = 7;
     entrada.bloquear();
     setTimeout(function () { if (jugando) AUDIO.grillos(); }, 5000);
     setTimeout(function () { if (jugando) AUDIO.buho(); }, 17000);
   }
 
-  el.comenzar.addEventListener('click', comenzar);
+  // el lienzo solo sirve para retomar el control cuando se ha perdido el cursor
   el.lienzo.addEventListener('click', function () {
-    if (jugando && !entrada.bloqueado) { el.inicio.classList.add('fundido'); entrada.bloquear(); }
+    if (jugando && !interfaz.enPausa() && entrada && !entrada.bloqueado) entrada.bloquear();
   });
 
   function sanearCamara() {
@@ -454,7 +469,14 @@
   }
 
   function actualizar(dt) {
+    // el menu corre con su propia camara y no toca el gameplay
+    if (interfaz && interfaz.esMenu()) {
+      interfaz.actualizar(dt);
+      cielo.actualizar(dt, interfaz.camara);
+      return;
+    }
     if (!jugando) return;
+    if (interfaz && interfaz.enPausa()) return;
     tiempoJuego += dt;
     aplicarMirada();
 
@@ -701,16 +723,36 @@
 
     cielo.actualizar(dt, camara);
 
+    // el HUD se apaga solo: objetivo y zona son solo el primer rato
+    if (hudTemporizador > 0) {
+      hudTemporizador -= dt;
+      if (hudTemporizador <= 0) el.hudArriba.classList.add('temporal');
+    }
+
     sanearCamara();
-    if (entrada.pulso('pausa')) entrada.liberar();
+    // Esc pausa directamente: no depende de que el navegador conceda el
+    // puntero, que es justo lo que falla en algunos entornos
+    if (entrada.pulso('pausa')) {
+      entrada.liberar();
+      if (interfaz && !interfaz.enPausa()) {
+        // el bucle sigue vivo: el mundo se ve detras, congelado
+        el.hud.classList.add('oculto');
+        document.body.classList.add('pausado');
+        document.body.classList.remove('jugando');
+        interfaz.pausar();
+      }
+    }
+    if (interfaz && interfaz.panelAbierto && entrada.pulso('herramienta')) interfaz.cerrarPanel();
     entrada.limpiar();
   }
 
   function dibujar(delta) {
     motor.renderer.info.reset();
     motor.post.preparar(delta, temblor, parpadeo);
-    if (motor.post.activo) motor.post.dibujar();
-    else motor.renderer.render(motor.escena, camara);
+    // pausado: se sigue pintando el mundo congelado, sin tocar el estado
+    const camaraActiva = interfaz && interfaz.esMenu() ? interfaz.camara : camara;
+    if (motor.post.activo) motor.post.dibujar(camaraActiva);
+    else motor.renderer.render(motor.escena, camaraActiva);
 
     if (!jugando) return;
     cuadrosFps += 1;
@@ -730,8 +772,8 @@
 
   window.addEventListener('error', function (e) {
     if (!listo) {
-      el.carga.textContent = 'Error: ' + e.message;
-      el.comenzar.disabled = true;
+      const c = document.getElementById('carga');
+      if (c) c.textContent = 'Error: ' + e.message;
     }
   });
 

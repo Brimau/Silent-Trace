@@ -32,7 +32,7 @@ convertido a un archivo de datos (ver [Assets](#assets)).
 | `M` | Radio |
 | `C` | Claxon |
 | `P` | Efecto cinematográfico |
-| `Esc` | Liberar el cursor |
+| `Esc` | Pausa |
 
 ## Estructura
 
@@ -45,13 +45,29 @@ js/nucleo/          motor, bucle, entrada, colisiones, post-proceso, ruido
 js/mundo/           terreno, caminos, carretera, bosque, pueblo, hospital
 js/jugador/         jugador, linterna, interacción
 js/vehiculos/       vehículo y cargador del modelo
-js/sistemas/        audio, herramientas, manos, progresión
+js/sistemas/        audio, herramientas, manos, progresión, interfaz
 js/main.js          orquestación
 assets/             datos del modelo del coche (generado)
 tools/              conversor GLB -> assets (Node, fuera del navegador)
 ```
 
 Todo el código usa el namespace global `J` y scripts clásicos, sin módulos.
+
+## Interfaz
+
+`js/sistemas/interfaz.js` lleva la máquina de estados `carga → menu ⇄ juego ⇄ pausa`.
+
+El menú principal **no construye un mundo aparte**: espera a que el mundo real
+esté construido y filma el coche de juego con los faros encendidos desde una
+cámara propia (`interfaz.camara`), con un giro muy lento y unas 340 partículas
+de polvo. Lo único que se añade al escenario es esa cámara y un `THREE.Points`.
+
+La pausa es una identidad distinta: no cambia de cámara ni de escena, solo
+atenúa y desenfoca un poco el lienzo congelado y pone el menú encima.
+
+`js/nucleo/postproceso.js` acepta la cámara como argumento en `dibujar()` para
+pintar el menú con la suya, y se salta la escena de overlay (las manos), que
+solo tiene sentido con la cámara del juego.
 
 ## Assets
 
