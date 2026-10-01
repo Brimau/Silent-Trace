@@ -127,8 +127,12 @@
         v *= 1 - suave(0.62, 0.86, muestrear(mancha, lado, u, w)) * 0.22;
         v = mezclar(v, 0.20, suave(0.8, 0.95, muestrear(derrame, lado, u, w)) * 0.3);
 
-        // neutro, con un punto calido: el asfalto no es azul
-        return [a2(v * 1.02), a2(v), a2(v * 0.98)];
+        // Gris frio, no calido. La paleta del bosque es toda marron
+        // (tierra 0x453b2e, hojarasca 0x4a3c2a): con un asfalto calido la
+        // calzada se fundia con el suelo y parecian tierra. El asfalto
+        // viejo y mojado de noche tira a azul, y eso es justo lo que lo
+        // separa de la tierra.
+        return [a2(v * 0.93), a2(v * 0.98), a2(v * 1.11)];
       });
     }, { anisotropia: 8 });
   }

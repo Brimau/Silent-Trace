@@ -95,9 +95,12 @@
     function colorAsfalto(x, z, d, e) {
       const t = Math.abs(d) / e.medio;
       // el eje algo mas claro que los bordes, como una carretera real
-      const brillo = 1.1 - t * t * 0.22;
+      const brillo = 1.06 - t * t * 0.24;
       const roce = 0.95 + 0.05 * Math.cos(d * 2.1);
-      return [brillo * roce, brillo * roce, brillo * roce * 1.01];
+      const g = brillo * roce;
+      // mismo criterio que la textura: gris azulado para que la calzada
+      // no se confunda con la tierra del bosque
+      return [g * 0.95, g * 0.99, g * 1.08];
     }
 
     function uvTerreno(x, z) { return [x / 12, z / 12]; }
