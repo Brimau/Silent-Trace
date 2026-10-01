@@ -148,6 +148,48 @@
       color: 0x76855f, depthWrite: true,
     });
 
+    // ------------------------------------------------ viento y vegetacion viva
+    // Un solo bloque de codigo para arbustos y hierba: la vegetacion se
+    // mece sola y se aparta cuando el jugador pasa rozandola. Es lo que
+    // hace que el bosque parezca habitado por algo que respira en vez
+    // de ser una decoracion fija.
+    const viento = {
+      uTiempo: { value: 0 },
+      uJugador: { value: new THREE.Vector3() },
+    };
+
+    function conViento(material, altura, clave) {
+      const uAltura = { value: altura };
+      material.onBeforeCompile = function (shader) {
+        shader.uniforms.uTiempo = viento.uTiempo;
+        shader.uniforms.uJugador = viento.uJugador;
+        shader.uniforms.uAltura = uAltura;
+        shader.vertexShader = 'uniform float uTiempo;\nuniform vec3 uJugador;\nuniform float uAltura;\n'
+          + shader.vertexShader;
+        shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', [
+          '#include <begin_vertex>',
+          '{',
+          '  vec3 iPos = vec3(0.0);',
+          '  #ifdef USE_INSTANCING',
+          '    iPos = vec3(instanceMatrix[3][0], instanceMatrix[3][1], instanceMatrix[3][2]);',
+          '  #endif',
+          '  float alto = clamp(transformed.y / uAltura, 0.0, 1.0);',
+          '  float fase = iPos.x * 0.63 + iPos.z * 0.91;',
+          '  float soplo = sin(uTiempo * 1.15 + fase) * 0.62 + sin(uTiempo * 2.37 + fase * 1.7) * 0.38;',
+          '  transformed.x += soplo * alto * uAltura * 0.030;',
+          '  transformed.z += soplo * alto * uAltura * 0.021;',
+          '  vec2 away = iPos.xz - uJugador.xz;',
+          '  float cerca = smoothstep(1.7, 0.1, length(away));',
+          '  transformed.xz += normalize(away + vec2(0.0001)) * cerca * alto * uAltura * 0.26;',
+          '}',
+        ].join('\n'));
+      };
+      // sin esto dos materiales con distinta altura comparten programa
+      material.customProgramCacheKey = function () { return 'viento:' + clave; };
+      material.needsUpdate = true;
+      return material;
+    }
+
     const aldeanos = [];
     for (let i = 0; i < B.arquetipos.length; i += 1) aldeanos.push([]);
     const lejanos = [];
@@ -335,6 +377,8 @@
     if (o.hierba > 0) {
       const w = B.hierba.ancho;
       const h = B.hierba.alto;
+      conViento(matHierba, h, 'hierba');
+      conViento(matArbusto, 1.5, 'arbusto');
       const pos = new Float32Array([
         -w / 2, 0, 0, w / 2, 0, 0, w / 2, h, 0, -w / 2, h, 0,
         0, 0, -w / 2, 0, 0, w / 2, 0, h, w / 2, 0, h, -w / 2,
@@ -487,6 +531,11 @@
       grupo: grupo,
       mallas: mallas,
       troncos: troncos,
+      // viento continuo y vegetacion que se aparta del jugador
+      actualizarViento(dt, posicion) {
+        viento.uTiempo.value += dt;
+        if (posicion) viento.uJugador.value.copy(posicion);
+      },
       ramas: ramas.length,
       hojarasca: hojarasca.length,
       arboles: aldeanos.reduce(function (a, b) { return a + b.length; }, 0)

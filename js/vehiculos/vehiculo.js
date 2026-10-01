@@ -292,6 +292,68 @@
       marchaAtras: false,
     };
 
+    // --------------------------------------------- polvo en el haz
+    // Particulas delante del coche que solo se ven cuando los faros
+    // estan encendidos. Sin esto el haz se ve como un cono de pintura;
+    // con polvo se ve aire. El brillo se apaga hacia los bordes del
+    // cono, que es como se comporta el polvo de verdad.
+    const POLVO = 260;
+    const hazPos = new Float32Array(POLVO * 3);
+    const hazCol = new Float32Array(POLVO * 3);
+    const hazFase = new Float32Array(POLVO);
+    const hazGeo = new THREE.BufferGeometry();
+    hazGeo.setAttribute('position', new THREE.BufferAttribute(hazPos, 3));
+    hazGeo.setAttribute('color', new THREE.BufferAttribute(hazCol, 3));
+    const hazMat = new THREE.PointsMaterial({
+      map: texturaPolvo(),
+      size: 0.03,
+      sizeAttenuation: true,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      vertexColors: true,
+      fog: true,
+    });
+    const hazPuntos = new THREE.Points(hazGeo, hazMat);
+    hazPuntos.frustumCulled = false;
+    hazPuntos.renderOrder = 5;
+    const LONGO = 16;
+    for (let i = 0; i < POLVO; i += 1) {
+      const t = Math.pow(Math.random(), 0.7);
+      const dist = 1.2 + t * LONGO;
+      const ang = Math.random() * Math.PI * 2;
+      const radio = Math.tan(F.angulo) * dist * (0.2 + Math.random() * 0.62);
+      hazPos[i * 3] = Math.cos(ang) * radio;
+      hazPos[i * 3 + 1] = 0.35 + Math.random() * 1.75;
+      hazPos[i * 3 + 2] = -dist;
+      // mas denso y mas brillante cerca de la boca del haz
+      const brillo = (1 - t * 0.72) * (0.35 + Math.random() * 0.65);
+      hazCol[i * 3] = brillo;
+      hazCol[i * 3 + 1] = brillo * 0.96;
+      hazCol[i * 3 + 2] = brillo * 0.88;
+      hazFase[i] = Math.random() * 6.28;
+    }
+    hazGeo.attributes.color.needsUpdate = true;
+    raiz.add(hazPuntos);
+
+    function texturaPolvo() {
+      const t = 32;
+      const c = document.createElement('canvas');
+      c.width = t;
+      c.height = t;
+      const ctx = c.getContext('2d');
+      const g = ctx.createRadialGradient(t / 2, t / 2, 0, t / 2, t / 2, t / 2);
+      g.addColorStop(0, 'rgba(255,250,240,0.85)');
+      g.addColorStop(0.4, 'rgba(255,246,228,0.22)');
+      g.addColorStop(1, 'rgba(255,244,220,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, t, t);
+      const tex = new THREE.CanvasTexture(c);
+      tex.needsUpdate = true;
+      return tex;
+    }
+
     function aMundoLocal(lx, lz) {
       const sen = Math.sin(estado.direccion);
       const cos = Math.cos(estado.direccion);
@@ -373,13 +435,32 @@
       }
     }
 
+    let tFaro = 0;
+    let dtActual = 1 / 60;
+
     function actualizarLuces(lucesFreno) {
       const faroOn = estado.luces ? 1 : 0;
-      faroIzq.intensity = faroOn * F.intensidad;
-      faroDer.intensity = faroOn * F.intensidad * 0.8;
+      // Un faro que no titila del todo parece un holograma; uno que titila
+      // mucho parece un vehiculo electrico. Esto es solo una respiracion
+      // corta, como el balanco de un contacto sucio.
+      tFaro += dtActual;
+      const respiro = 1 - Math.max(0, Math.sin(tFaro * 2.3)) * 0.055
+        - (azar() < 0.006 ? 0.16 : 0);
+      faroIzq.intensity = faroOn * F.intensidad * respiro;
+      faroDer.intensity = faroOn * F.intensidad * 0.8 * respiro;
       derrame.intensity = faroOn * 0.16;
       relleno.intensity = faroOn * 0.05;
-      faroLargo.intensity = faroOn * 16;
+      faroLargo.intensity = faroOn * 16 * respiro;
+      hazMat.opacity = faroOn * 0.34 * respiro;
+      hazPuntos.visible = faroOn > 0;
+      // deriva lenta del polvo dentro del haz
+      for (let i = 0; i < POLVO; i += 1) {
+        const j = i * 3;
+        hazFase[i] += dtActual * 0.5;
+        hazPos[j] += Math.sin(hazFase[i]) * dtActual * 0.22;
+        hazPos[j + 1] += Math.cos(hazFase[i] * 0.7) * dtActual * 0.07;
+      }
+      hazGeo.attributes.position.needsUpdate = true;
 
       const alturaFaro = 0.66;
       faroIzq.position.set(-(A / 2 - 0.5), alturaFaro, -L / 2 + 0.1);
@@ -527,6 +608,7 @@
     }
 
     function actualizarEstacionado(dt) {
+      dtActual = dt;
       estado.velocidad = 0;
       estado.velocidadLateral = 0;
       estado.giro *= Math.max(0, 1 - dt * 8);

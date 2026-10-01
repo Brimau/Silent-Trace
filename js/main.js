@@ -948,6 +948,7 @@ function entrarEnJuego(continuando) {
 
     // ejecuta los guardados que se agruparon por intervalo
     if (guardado) guardado.vaciar();
+    bosque.actualizarViento(dt, enCoche ? vehiculo.posicion : jugador.posicion);
 
     sanearCamara();
     // Esc pausa directamente: no depende de que el navegador conceda el
