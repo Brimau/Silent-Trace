@@ -117,8 +117,11 @@
     faros: {
       intensidad: 132,
       distancia: 95,
-      angulo: 0.62,
-      penumbra: 0.55,
+      // Cono mas cerrado y con penumbra alta: el haz se desvanece en los
+      // bordes en vez de abrirse como un foco delood. 0.62/0.55 se leia
+      // como un foco gigante.
+      angulo: 0.44,
+      penumbra: 0.86,
       decaimiento: 0.95,
       altura: 0.68,
       desplazamiento: 0.66,

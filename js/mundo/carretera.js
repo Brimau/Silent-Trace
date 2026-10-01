@@ -71,8 +71,10 @@
     const matAsfalto = new THREE.MeshStandardMaterial({
       map: TEX.asfalto(),
       vertexColors: true,
-      roughness: 0.72,
-      metalness: 0.04,
+      // mas lustroso que mate: de noche, el brillo ancho de los faros
+      // sobre una superficie lisa es lo que la hace leer como asfalto
+      roughness: 0.52,
+      metalness: 0.07,
       dithering: true,
     });
 
@@ -92,9 +94,10 @@
 
     function colorAsfalto(x, z, d, e) {
       const t = Math.abs(d) / e.medio;
-      const brillo = 1.06 - t * t * 0.3;
-      const roce = 0.93 + 0.07 * Math.cos(d * 2.1);
-      return [brillo * roce, brillo * roce, brillo * roce * 1.02];
+      // el eje algo mas claro que los bordes, como una carretera real
+      const brillo = 1.1 - t * t * 0.22;
+      const roce = 0.95 + 0.05 * Math.cos(d * 2.1);
+      return [brillo * roce, brillo * roce, brillo * roce * 1.01];
     }
 
     function uvTerreno(x, z) { return [x / 12, z / 12]; }

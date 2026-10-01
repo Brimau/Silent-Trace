@@ -297,7 +297,18 @@
         const dado = rnd();
         if (dado < 0.44) {
           const t = elegir(B.arbustos, B.pesosArbusto, rnd);
-          arbustos.push({ x: px, y: y - 0.1, z: pz, s: 0.5 + rnd() * 1.0, ry: rnd() * 6.28, t: t });
+          const s = 0.5 + rnd() * 1.0;
+          arbustos.push({ x: px, y: y - 0.1, z: pz, s: s, ry: rnd() * 6.28, t: t });
+          // Los matorrales grandes frenan: antes se los atravesaba. Solo
+          // los que tienen volumen suficiente, para no crear miles de
+          // colisionadores por matas de helecho.
+          const radioArbusto = t.r * s;
+          if (radioArbusto > 0.52) {
+            troncos.push({
+              x: px, z: pz, r: radioArbusto * 0.72,
+              alto: t.h * s, base: y, etiqueta: 'arbusto',
+            });
+          }
         } else if (dado < 0.62) {
           const t = elegir(B.rocas, B.pesosRoca, rnd);
           const s = 0.4 + rnd() * 1.0;

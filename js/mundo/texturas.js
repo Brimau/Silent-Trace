@@ -112,18 +112,23 @@
         const u = x / tam;
         const w = y / tam;
         const brillo = hash2(x, y, S + 320);
-        let v = 0.20 + muestrear(base, lado, u, w) * 0.13
-          + muestrear(grava, lado, u, w) * 0.1 + brillo * 0.05;
+        // Base algo mas clara y menos contraste: con las grietas y manchas
+        // tan marcadas el asfalto parecia tierra. Ahora se lee como una
+        // superficie lisa y gastada, que es lo que hace que los faros
+        // dibujen un brillo continuo sobre ella.
+        let v = 0.26 + muestrear(base, lado, u, w) * 0.09
+          + muestrear(grava, lado, u, w) * 0.06 + brillo * 0.035;
 
         const grieta = Math.abs(muestrear(grietaC, lado, u, w) - 0.5);
         const grietaFina = Math.abs(muestrear(grietaF, lado, u, w) - 0.5);
-        v = mezclar(v, 0.07, (1 - suave(0.012, 0.055, grieta)) * 0.85);
-        v = mezclar(v, 0.1, (1 - suave(0.004, 0.022, grietaFina)) * 0.5);
-        v = mezclar(v, 0.15, suave(0.54, 0.63, muestrear(parche, lado, u, w)) * 0.75);
-        v *= 1 - suave(0.62, 0.86, muestrear(mancha, lado, u, w)) * 0.42;
-        v = mezclar(v, 0.09, suave(0.8, 0.95, muestrear(derrame, lado, u, w)) * 0.5);
+        v = mezclar(v, 0.15, (1 - suave(0.012, 0.055, grieta)) * 0.55);
+        v = mezclar(v, 0.18, (1 - suave(0.004, 0.022, grietaFina)) * 0.35);
+        v = mezclar(v, 0.30, suave(0.54, 0.63, muestrear(parche, lado, u, w)) * 0.5);
+        v *= 1 - suave(0.62, 0.86, muestrear(mancha, lado, u, w)) * 0.22;
+        v = mezclar(v, 0.20, suave(0.8, 0.95, muestrear(derrame, lado, u, w)) * 0.3);
 
-        return [a2(v * 1.03), a2(v), a2(v * 1.08)];
+        // neutro, con un punto calido: el asfalto no es azul
+        return [a2(v * 1.02), a2(v), a2(v * 0.98)];
       });
     }, { anisotropia: 8 });
   }

@@ -152,7 +152,8 @@
     raiz.add(faroDer);
     raiz.add(faroDer.target);
 
-    const faroLargo = new THREE.SpotLight(0xffeccc, 0, 34, 0.34, 0.85, 0.8);
+    // haz largo: estrecho y con el borde difuminado, no un segundo foco abierto
+    const faroLargo = new THREE.SpotLight(0xffeccc, 0, 34, 0.26, 0.95, 0.8);
     raiz.add(faroLargo);
     raiz.add(faroLargo.target);
 
@@ -376,7 +377,7 @@
       const faroOn = estado.luces ? 1 : 0;
       faroIzq.intensity = faroOn * F.intensidad;
       faroDer.intensity = faroOn * F.intensidad * 0.8;
-      derrame.intensity = faroOn * 0.3;
+      derrame.intensity = faroOn * 0.16;
       relleno.intensity = faroOn * 0.05;
       faroLargo.intensity = faroOn * 16;
 

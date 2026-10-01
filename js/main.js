@@ -240,6 +240,7 @@
 
 
 
+
       listo = true;
       // el menu entra con el mundo ya construido: se ve el coche real
       interfaz.mostrarMenu();
@@ -571,6 +572,8 @@ function entrarEnJuego(continuando) {
       v.value = String(Math.round(opciones.volumen * 100));
       s.value = String(Math.round(opciones.sensibilidad * 100));
       c.value = String(Math.round(opciones.calidad * 100));
+      // al tocar la calidad se olvida la degradacion automatica anterior
+      escala = 1;
       aplicarOpciones();
       try { localStorage.setItem(CLAVE_OPCIONES, JSON.stringify(opciones)); } catch (e) { /* sin espacio */ }
     }
@@ -978,14 +981,20 @@ function entrarEnJuego(continuando) {
     acumFps += delta;
     if (acumFps > 2.5) {
       const fps = cuadrosFps / acumFps;
+      const base = CONFIG.calidades.media.pixelRatio * opciones.calidad;
       if (fps < 34 && escala > 0.64) {
         escala = Math.max(0.64, escala - 0.16);
         // La calidad que eligio el usuario es la base; la escala es solo
-        // la degradacion automatica. Antes se pisaban entre si.
-        const base = CONFIG.calidades.media.pixelRatio * opciones.calidad;
+        // la degradacion automatica.
         motor.pixelRatio = Math.max(0.6, base * escala);
       } else if (fps < 26) {
         bosque.ajustar(0.55);
+      } else if (fps > 54 && escala < 1) {
+        // Sin esto la resolucion se degradaba una vez y no volvia nunca:
+        // el juego se quedaba borroso para siempre aunque subieras la
+        // calidad a mano.
+        escala = Math.min(1, escala + 0.12);
+        motor.pixelRatio = Math.max(0.6, base * escala);
       }
       acumFps = 0;
       cuadrosFps = 0;
