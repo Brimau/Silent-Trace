@@ -241,6 +241,7 @@
 
 
 
+
       listo = true;
       // el menu entra con el mundo ya construido: se ve el coche real
       interfaz.mostrarMenu();
@@ -494,7 +495,10 @@ function entrarEnJuego(continuando) {
   function cercaDelCoche() {
     const dx = jugador.posicion.x - vehiculo.posicion.x;
     const dz = jugador.posicion.z - vehiculo.posicion.z;
-    return dx * dx + dz * dz < 36;
+    // mismo alcance que el prompt de interaccion: antes se podia subir
+    // desde 6 m, sin que el prompt apareciera, y no cuadraba con nada
+    const r = CONFIG.interaccion.distancia;
+    return dx * dx + dz * dz < r * r;
   }
 
   const equipo = { linterna: true, camara: false, libreta: false };
@@ -715,7 +719,10 @@ function entrarEnJuego(continuando) {
       if (vehiculo.estado.ocupado) {
         alternarConduccion();
       } else {
-        herramientas.guardar();
+        // Antes se ocultaban las herramientas en cada pulsacion de E. Eso
+        // hacia desaparecer la linterna de la mano al abrir una puerta y
+        // la luz se quedaba suelta delante de los ojos. Interactuar no
+        // exige guardar nada.
         const encontrado = interaccion.consumir();
         if (encontrado) {
           if (encontrado.equipo) {

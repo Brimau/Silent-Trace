@@ -7,6 +7,7 @@
     const cajas = [];
     const interactivos = new Set();
     const rejilla = new Map();
+    const moviles = [];
     const vacio = [];
 
     function clave(ix, iz) { return ix + ',' + iz; }
@@ -100,7 +101,7 @@
       return true;
     }
 
-    function resolver(pos, radio, alturaPies) {
+    function resolver(pos, radio, alturaPies, excepto) {
       let golpeo = false;
       for (let vuelta = 0; vuelta < 3; vuelta += 1) {
         const lista = candidatos(pos.x, pos.z);
@@ -110,9 +111,59 @@
           if (alturaPies + 1.75 < caja.base || alturaPies - 0.3 > caja.base + caja.alto) continue;
           if (resolverCaja(pos, radio, caja)) { toco = true; golpeo = true; }
         }
+        // Los moviles no van en la rejilla: al moverse se quedarian
+        // indexados en la celda de antes. Se comprueban siempre, y son
+        // pocos, asi que no compensa rehacer el hash.
+        for (let i = 0; i < moviles.length; i += 1) {
+          const m = moviles[i];
+          // el coche se ignora a si mismo al testar sus propias colisiones
+          if (m.borrado || m === excepto) continue;
+          if (alturaPies + 1.75 < m.base || alturaPies - 0.3 > m.base + m.alto) continue;
+          if (resolverCaja(pos, radio, m)) { toco = true; golpeo = true; }
+        }
         if (!toco) break;
       }
       return golpeo;
+    }
+
+    // Obstaculos que se mueven: el coche. Se guardan aparte de la
+    // rejilla porque cambiarian de celda en cada fotograma.
+    function agregarMovil(datos) {
+      const rot = datos.rot || 0;
+      const m = {
+        cx: datos.x,
+        cz: datos.z,
+        hx: (datos.ancho || 1) * 0.5,
+        hz: (datos.fondo || 1) * 0.5,
+        alto: datos.alto === undefined ? 2 : datos.alto,
+        base: datos.base || 0,
+        rot,
+        cos: Math.cos(rot),
+        sen: Math.sin(rot),
+        redondo: false,
+        radio: 0,
+        etiqueta: datos.etiqueta || 'movil',
+        borrado: false,
+      };
+      moviles.push(m);
+      return m;
+    }
+
+    function moverMovil(m, x, z, rot) {
+      m.cx = x;
+      m.cz = z;
+      if (rot !== undefined) {
+        m.rot = rot;
+        m.cos = Math.cos(rot);
+        m.sen = Math.sin(rot);
+      }
+    }
+
+    function quitarMovil(m) {
+      if (!m) return;
+      m.borrado = true;
+      const i = moviles.indexOf(m);
+      if (i >= 0) moviles.splice(i, 1);
     }
 
     function agregarTroncos(lista) {
@@ -169,6 +220,9 @@
     return {
       cajas,
       agregarCaja,
+      agregarMovil,
+      moverMovil,
+      quitarMovil,
       agregarTroncos,
       resolver,
       puntoSolido,

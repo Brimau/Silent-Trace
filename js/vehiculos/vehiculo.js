@@ -407,11 +407,29 @@
       pendiente: 0, lateral: 0, acelLong: 0, giro: 0, golpeo: 0,
     };
 
+    // -------------------------------------------------- el coche es solido
+    // Sin esto el jugador atraviesa la carrocería de lado. Va aparte de
+    // la rejilla porque se mueve.
+    const cuerpoSolido = colisiones.agregarMovil({
+      x: estado.posicion.x,
+      z: estado.posicion.z,
+      ancho: A * 0.94,
+      fondo: L * 0.96,
+      alto: 1.5,
+      base: 0,
+      rot: -estado.direccion,
+      etiqueta: 'vehiculo',
+    });
+
     function aplicarPose() {
       raiz.position.copy(estado.posicion);
       raiz.rotation.set(0, estado.direccion, 0);
       raiz.rotateX(-pendiente() * 0.85 + estado.cabeceo);
       raiz.rotateZ(-inclinacionLateral() * 0.5 - estado.velocidadLateral * 0.0025 + estado.balanceo);
+      if (cuerpoSolido) {
+        colisiones.moverMovil(cuerpoSolido, estado.posicion.x, estado.posicion.z, -estado.direccion);
+        cuerpoSolido.base = estado.posicion.y;
+      }
     }
 
     function anguloRueda() {
@@ -560,7 +578,7 @@
       for (let i = 0; i < puntos.length; i += 1) {
         const p = puntos[i];
         const guardado = { x: p.x, z: p.z };
-        if (colisiones.resolver(guardado, 1.0, estado.posicion.y)) {
+        if (colisiones.resolver(guardado, 1.0, estado.posicion.y, cuerpoSolido)) {
           p.x = guardado.x;
           p.z = guardado.z;
           golpeo = true;

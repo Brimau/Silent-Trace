@@ -322,9 +322,16 @@
     }));
     lenteLinterna.position.set(0, 0, -0.124);
     linternaMano.add(lenteLinterna);
-    linternaMano.position.set(0, -0.004, -0.03);
+    linternaMano.position.set(0, 0, 0);
     linternaMano.visible = false;
-    der.userData.mano.add(linternaMano);
+    // Ancla siempre presente y nunca oculta: es la que usa la luz del
+    // mundo. Si la luz dependiera de que el modelo este visible, al
+    // cambiar de herramienta o al interactuar la luz se soltaria de la
+    // mano y se quedaria clavada delante de los ojos.
+    const anclaLinterna = new THREE.Group();
+    anclaLinterna.position.set(0, -0.004, -0.154);
+    der.userData.mano.add(anclaLinterna);
+    anclaLinterna.add(linternaMano);
 
     let actual = 'manos';
     let showing = true;
@@ -410,9 +417,9 @@
       // identico al espacio de la camara principal. La linterna del mundo
       // sale de aqui para que el haz nazca en la mano y no en los ojos.
       punteroLinterna(destino) {
-        if (!linternaOn || !linternaMano.visible) return false;
+        if (!linternaOn) return false;
         raiz.updateMatrixWorld(true);
-        destino.setFromMatrixPosition(lenteLinterna.matrixWorld);
+        destino.setFromMatrixPosition(anclaLinterna.matrixWorld);
         return true;
       },
 
