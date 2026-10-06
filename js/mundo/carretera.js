@@ -3,7 +3,7 @@
 
   const { CONFIG } = J;
   const TEX = J.TEX;
-  const { crearPRNG, mezclar } = J.ruido;
+  const { crearPRNG, mezclar, fbm, suave } = J.ruido;
   const { fusionar, matriz } = J;
 
   const EXCESO = 4.0;
@@ -97,10 +97,31 @@
       // el eje algo mas claro que los bordes, como una carretera real
       const brillo = 1.06 - t * t * 0.24;
       const roce = 0.95 + 0.05 * Math.cos(d * 2.1);
-      const g = brillo * roce;
-      // mismo criterio que la textura: gris azulado para que la calzada
-      // no se confunda con la tierra del bosque
-      return [g * 0.95, g * 0.99, g * 1.08];
+      let g = brillo * roce;
+      // gris azulado para que la calzada no se confunda con la tierra
+      let r = g * 0.95;
+      let v = g * 0.99;
+      let a = g * 1.08;
+
+      // Tierra invading los bordes. El limite se desplaza con ruido, de
+      // modo que no hay una linea recta donde acaba el asfalto, sino
+      // una franja irregular: hojas, barro y tierra metidos en el
+      // asfalto, como una carretera abandonada años.
+      const cercaBorde = Math.max(0, (t - 0.62) / 0.38);
+      if (cercaBorde > 0) {
+        const n = fbm(x / 7.5, z / 7.5, { octavas: 3, semilla: CONFIG.semilla + 611 });
+        const invasion = Math.min(1, cercaBorde * (0.45 + n * 1.35));
+        const tierra = 0.46 + n * 0.16;
+        r += (tierra * 1.0 - r) * invasion * 0.85;
+        v += (tierra * 0.86 - v) * invasion * 0.85;
+        a += (tierra * 0.66 - a) * invasion * 0.85;
+        g = (r + v + a) / 3;
+      }
+
+      // manchas de humedad: zonas oscuras y mojadas
+      const hum = fbm(x / 13, z / 13, { octavas: 2, semilla: CONFIG.semilla + 733 });
+      const oscuro = 1 - suave(0.56, 0.9, hum) * 0.34;
+      return [r * oscuro, v * oscuro, a * oscuro * 1.02];
     }
 
     function uvTerreno(x, z) { return [x / 12, z / 12]; }
@@ -122,10 +143,17 @@
       }
 
       const perfilAsfalto = [
+        // Mas puntos cerca de los bordes: es donde entra la tierra. Con
+        // cinco puntos el borde quedaba perfecto y la carretera parecia
+        // una cinta pegada sobre el terreno.
         { d: -camino.medio, elevacion: 0.0 },
-        { d: -camino.medio * 0.5, elevacion: 0.05 },
+        { d: -camino.medio + 0.6, elevacion: 0.012 },
+        { d: -camino.medio + 1.4, elevacion: 0.034 },
+        { d: -camino.medio * 0.55, elevacion: 0.056 },
         { d: 0, elevacion: 0.07 },
-        { d: camino.medio * 0.5, elevacion: 0.05 },
+        { d: camino.medio * 0.55, elevacion: 0.056 },
+        { d: camino.medio - 1.4, elevacion: 0.034 },
+        { d: camino.medio - 0.6, elevacion: 0.012 },
         { d: camino.medio, elevacion: 0.0 },
       ];
 
@@ -224,7 +252,7 @@
       const items = [];
 
       function tramo(ini, fin, d, anchoLinea, geo) {
-        const pasos = Math.max(1, Math.round((fin - ini) / 4));
+        const pasos = Math.max(1, Math.round((fin - ini) / 2.2));
         for (let i = 0; i < pasos; i += 1) {
           const s0 = ini + ((fin - ini) * i) / pasos;
           const s1 = ini + ((fin - ini) * (i + 1)) / pasos;
@@ -236,10 +264,20 @@
           const z = (a.z + b.z) / 2 + a.pz * d;
           const y = (a.y + b.y) / 2 + peralte(camino.medio, d) + 0.012;
           const borde = Math.min(1, Math.max(0, Math.min(s0, camino.longitud - s0) / 40));
-          const g = (0.46 + rnd() * 0.46) * (0.5 + borde * 0.5);
+
+          // Pintura vieja: se come por tramos y pierde intensidad por
+          // zonas. Una linea continua y uniforme delata una carretera
+          // recién estrenada.
+          const desgaste = fbm(x / 5.5, z / 5.5, { octavas: 3, semilla: CONFIG.semilla + 881 });
+          const propio = 0.22 + rnd() * 0.5;
+          const base = (desgaste * 0.78 + propio * 0.44) * (0.5 + borde * 0.5);
+          const g = Math.max(0, base);
+          // huecos: donde el desgaste es muy bajo la pintura se fue
+          if (desgaste < 0.2 && rnd() < 0.72) continue;
+
           items.push({
             s: (s0 + s1) / 2, x: x, z: z, geometria: geo, color: gris(g),
-            matriz: matriz(x, y, z, 0, Math.atan2(b.x - a.x, b.z - a.z), 0, anchoLinea, 1, largo + 0.06),
+            matriz: matriz(x, y, z, 0, Math.atan2(b.x - a.x, b.z - a.z), 0, anchoLinea, 1, largo + 0.05),
           });
         }
       }

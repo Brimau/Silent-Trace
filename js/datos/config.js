@@ -107,11 +107,17 @@
     },
 
     linterna: {
-      intensidad: 15,
-      distancia: 27,
-      angulo: 0.4,
-      penumbra: 0.66,
-      decaimiento: 1.0,
+      // Cono mas estrecho y con penumbra casi total: con 0.66 de
+      // penumbra el borde se cortaba y se veia un circulo perfecto
+      // pegado a la pantalla. Ahora el centro es lo unico brillante y
+      // se disuelve hasta casi cero en el borde.
+      intensidad: 17,
+      distancia: 24,
+      angulo: 0.34,
+      penumbra: 0.92,
+      // mas decaimiento: la luz se apaga antes de llegar lejos, que es
+      // lo que hace que el bosque siga oscuro alrededor
+      decaimiento: 1.25,
     },
 
     faros: {
