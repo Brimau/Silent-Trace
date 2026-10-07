@@ -242,6 +242,7 @@
 
 
 
+
       listo = true;
       // el menu entra con el mundo ya construido: se ve el coche real
       interfaz.mostrarMenu();
@@ -370,7 +371,13 @@ function entrarEnJuego(continuando) {
     cab.yaw += diferencia * Math.min(1, dt * CD.seguimiento);
     mirada.yaw = cab.yaw;
 
-    const destinoPitch = cab.localPitch - (info.acelLong || 0) * 0.004;
+    // Alcance de la vista: el aceleron longitudinal inclina un poco, como
+    // haria el peso del coche, pero acotado. Sin el tope, al arrancar
+    // en reversa la aceleracion llega a -120 m/s2 y la camara se iba
+    // 27 grados arriba, a mirar el techo.
+    const kick = Math.max(-7, Math.min(7, info.acelLong || 0));
+    const sentido = info.velocidad < -0.15 ? -1 : 1;
+    const destinoPitch = cab.localPitch + sentido * kick * 0.0035;
     mirada.pitch += (destinoPitch - mirada.pitch) * Math.min(1, dt * CD.seguimiento);
 
     const giro = Math.max(-1, Math.min(1, (info.giro || 0) / 0.4));

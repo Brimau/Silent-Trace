@@ -596,7 +596,8 @@
       const suelo = asentar();
       estado.posicion.y += (suelo - estado.posicion.y) * Math.min(1, dt * V.suspension);
 
-      const acelLong = (estado.velocidad - absPrevio) / Math.max(dt, 1e-4);
+      const velPrevio = estado.velocidad;
+      const acelLong = (estado.velocidad - velPrevio) / Math.max(dt, 1e-4);
       estado.cabeceo += ((-acelLong / V.masa) * V.cabeceoAceleracion - estado.cabeceo) * Math.min(1, dt * 5);
       // El balanceo va con la aceleracion lateral, no con el angulo de
       // volante: corregirse un poco no inclina el coche, entrar en una

@@ -68,8 +68,11 @@
     cono.renderOrder = 3;
     escena.add(cono);
 
-    // halo de lente: destello corto en la boca
-    const haloGeo = new THREE.SpriteMaterial({
+    // Destello del lente. Antes era un disco blando de 0,34 con opacidad 0,5:
+// al apuntar al frente sin nada delante se veia un circulo flotando en
+// pantalla, que es justo lo que hace que una linterna parezca falsa.
+// Ahora es un punto brillante y pequeño, como el reflejo de un cristal.
+const haloGeo = new THREE.SpriteMaterial({
       map: TEX.haloLinterna(),
       color: 0xfff2d8,
       transparent: true,
@@ -78,7 +81,7 @@
       blending: THREE.AdditiveBlending,
     });
     const haloLente = new THREE.Sprite(haloGeo);
-    haloLente.scale.setScalar(0.34);
+    haloLente.scale.setScalar(0.16);
     haloLente.renderOrder = 4;
     escena.add(haloLente);
 
@@ -151,7 +154,7 @@
       cono.visible = factor > 0.02 && !dentro;
 
       haloLente.position.copy(estado.origen).addScaledVector(delante, 0.05);
-      haloGeo.opacity = factor * 0.5;
+      haloGeo.opacity = factor * 0.22;
       haloLente.visible = factor > 0.02;
     }
 
